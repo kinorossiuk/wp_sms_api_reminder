@@ -1,8 +1,12 @@
 .json-tool{max-width:1120px}
 .json-security-note{margin-top:2rem;border:1px solid var(--line);background:var(--surface)}
-.json-security-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.85rem 1rem;border-bottom:1px solid var(--line)}
-.json-security-head h2{margin:0;font-size:.8rem;letter-spacing:-.01em}
-.json-security-head span{color:var(--acid);font:.64rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em}
+.json-security-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.85rem 1rem;cursor:pointer;list-style:none}
+.json-security-head::-webkit-details-marker{display:none}
+.json-security-head::before{content:'+';display:grid;place-items:center;width:18px;height:18px;border:1px solid var(--line);color:var(--acid);font:700 .8rem ui-monospace,SFMono-Regular,Menlo,monospace}
+.json-security-note[open] .json-security-head{border-bottom:1px solid var(--line)}
+.json-security-note[open] .json-security-head::before{content:'−'}
+.json-security-head span:first-of-type{margin-right:auto;font-size:.8rem;font-weight:750;letter-spacing:-.01em}
+.json-security-head span:last-of-type{color:var(--acid);font:.64rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em}
 .json-security-note ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:0;padding:0;list-style:none}
 .json-security-note li{display:grid;gap:.35rem;padding:1rem;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
 .json-security-note li:nth-child(2n){border-right:0}
