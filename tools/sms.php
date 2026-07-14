@@ -16,24 +16,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = (string) ($_POST['action'] ?? '');
         if ($action === 'sms-save-config') {
             rossi_sms_update_config($_POST);
-            $_SESSION['sms_notice'] = 'SMS 설정을 안전하게 저장했습니다.';
-            header('Location: /tools/sms/', true, 303);
-            exit;
-        }
-        $readyConfig = rossi_sms_config();
-        if ($action === 'sms-schedule') {
+            $smsNotice = 'SMS 설정을 안전하게 저장했습니다.';
+            $_POST = [];
+        } elseif ($action === 'sms-schedule') {
+            $readyConfig = rossi_sms_config();
             rossi_sms_schedule($readyConfig, (string) ($_POST['recipient'] ?? ''), (string) ($_POST['message'] ?? ''), (string) ($_POST['scheduled_at'] ?? ''));
-            $_SESSION['sms_notice'] = 'SOLAPI 예약이 접수되었습니다.';
-            header('Location: /tools/sms/', true, 303);
-            exit;
-        }
-        if ($action === 'sms-cancel') {
+            $smsNotice = 'SOLAPI 예약이 접수되었습니다.';
+            $_POST = [];
+        } elseif ($action === 'sms-cancel') {
+            $readyConfig = rossi_sms_config();
             rossi_sms_cancel($readyConfig, (string) ($_POST['public_id'] ?? ''));
-            $_SESSION['sms_notice'] = '예약 취소 요청을 처리했습니다.';
-            header('Location: /tools/sms/', true, 303);
-            exit;
+            $smsNotice = '예약 취소 요청을 처리했습니다.';
+            $_POST = [];
+        } else {
+            throw new RuntimeException('알 수 없는 SMS 요청입니다.');
         }
-        throw new RuntimeException('알 수 없는 SMS 요청입니다.');
     } catch (Throwable $error) {
         $smsError = $error->getMessage();
     }
