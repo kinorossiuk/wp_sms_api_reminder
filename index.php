@@ -116,7 +116,7 @@ function e(string $value): string
             <a class="tool-card" href="<?= e($tool['path']) ?>">
               <div class="tool-card-top">
                 <div class="tool-icon" aria-hidden="true">
-                  <?php if ($slug === 'qr'): ?><svg viewBox="0 0 32 32"><path d="M3 3h10v10H3V3Zm3 3v4h4V6H6Zm13-3h10v10H19V3Zm3 3v4h4V6h-4ZM3 19h10v10H3V19Zm3 3v4h4v-4H6Zm13-3h4v4h-4v-4Zm6 0h4v4h-4v-4Zm-6 6h4v4h-4v-4Zm6 0h4v4h-4v-4Z"/></svg><?php endif; ?>
+                  <?php if ($slug === 'qr'): ?><svg viewBox="0 0 32 32"><path d="M3 3h10v10H3V3Zm3 3v4h4V6H6Zm13-3h10v10H19V3Zm3 3v4h4V6h-4ZM3 19h10v10H3V19Zm3 3v4h4v-4H6Zm13-3h4v4h-4v-4Zm6 0h4v4h-4v-4Zm-6 6h4v4h-4v-4Zm6 0h4v4h-4v-4Z"/></svg><?php elseif ($slug === 'test-data'): ?><svg viewBox="0 0 32 32"><path d="M6 3h14l6 6v20H6V3Zm12 2.8V11h5.2L18 5.8ZM10 15h12v2H10v-2Zm0 5h12v2H10v-2Zm0 5h8v2h-8v-2Z"/></svg><?php endif; ?>
                 </div>
                 <span class="badge"><?= e($tool['status']) ?></span>
               </div>
