@@ -29,8 +29,7 @@
   const contactPreview = root.querySelector('#contact-preview');
   const contactCsv = root.querySelector('#contact-csv');
   const contactStatus = root.querySelector('#contact-status');
-  const maxBytes = 100 * 1024 * 1024;
-  const maxVideoBytes = 300 * 1024 * 1024;
+  const maxBytes = 300 * 1024 * 1024;
   const webmBitrate = 12_000_000;
   let contacts = [];
 
@@ -255,8 +254,7 @@
     const size = Number(fileSize.value);
     if (!Number.isFinite(size) || size < 1) throw new Error('용량은 1 이상으로 입력해 주세요.');
     const bytes = Math.round(size * (fileUnit.value === 'MiB' ? 1024 * 1024 : 1000 * 1000));
-    const limit = fileKind.value === 'webm' ? maxVideoBytes : maxBytes;
-    if (bytes > limit) throw new Error(`이 파일 종류는 한 번에 최대 ${formatBytes(limit)}까지만 만들 수 있습니다.`);
+    if (bytes > maxBytes) throw new Error(`한 번에 최대 ${formatBytes(maxBytes)}까지만 만들 수 있습니다.`);
     return bytes;
   };
 
@@ -264,10 +262,10 @@
     const isImage = fileKind.value === 'png';
     const isVideo = fileKind.value === 'webm';
     imageOption.hidden = !isImage;
-    fileSize.max = isVideo ? '300' : '100';
+    fileSize.max = '300';
     fileHint.textContent = isVideo
       ? '모바일 호환을 위해 실제 WebM을 녹화합니다. 목표 용량에 맞춰 영상 길이를 자동으로 정합니다. 실제 파일 크기는 목표에 가깝게 생성됩니다.'
-      : '실제 파일 형식을 만든 뒤, 보이지 않는 패딩을 추가해 목표 바이트에 맞춥니다. 생성 파일은 서버에 저장되지 않습니다.';
+      : '실제 파일 형식을 만든 뒤, 보이지 않는 패딩을 추가해 목표 바이트에 맞춥니다. 최대 300 MiB까지 가능하며 큰 파일은 충분한 브라우저 메모리가 필요합니다.';
   };
 
   tabs.forEach((tab) => tab.addEventListener('click', () => {

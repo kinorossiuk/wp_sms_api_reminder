@@ -32,7 +32,7 @@ $testDataJsVersion = (string) (filemtime(__DIR__ . '/../static/test-data.js') ?:
         </select>
       </label>
       <label>목표 용량
-        <div class="size-input"><input id="file-size" name="size" type="number" min="1" max="100" value="1" required inputmode="decimal"><select id="file-unit" name="unit"><option value="MiB">MiB</option><option value="MB">MB</option></select></div>
+        <div class="size-input"><input id="file-size" name="size" type="number" min="1" max="300" value="1" required inputmode="decimal"><select id="file-unit" name="unit"><option value="MiB">MiB</option><option value="MB">MB</option></select></div>
       </label>
       <label>파일명
         <input id="file-name" name="name" maxlength="60" value="test-file" required>
@@ -42,7 +42,7 @@ $testDataJsVersion = (string) (filemtime(__DIR__ . '/../static/test-data.js') ?:
       </label>
       <p class="test-hint" id="file-hint">PNG, TXT, PDF, DOCX, XLSX는 목표 바이트에 맞춰 생성합니다. WebM은 최신 Chrome·Edge에서 지원됩니다.</p>
       <button class="primary" type="submit">파일 생성 및 다운로드</button>
-      <p class="test-status" id="file-status" role="status" aria-live="polite">일반 파일은 최대 100 MiB, WebM 동영상은 최대 300 MiB까지 만들 수 있습니다.</p>
+      <p class="test-status" id="file-status" role="status" aria-live="polite">모든 파일은 최대 300 MiB까지 만들 수 있습니다. 큰 파일은 충분한 브라우저 메모리가 필요합니다.</p>
     </form>
   </section>
 
