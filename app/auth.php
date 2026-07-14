@@ -4,6 +4,8 @@ declare(strict_types=1);
 const ROSSI_MAX_ATTEMPTS = 5;
 const ROSSI_ATTEMPT_WINDOW = 900;
 const ROSSI_BLOCK_SECONDS = 1800;
+const ROSSI_MAX_LOCKOUTS = 3;
+const ROSSI_LOCKOUT_WINDOW = 604800;
 const ROSSI_SESSION_SECONDS = 43200;
 
 function rossi_security_dir(): string
@@ -58,10 +60,29 @@ function rossi_record_failure(string $path, int $now): ?array
     }
 
     $count++;
+    $blockedUntil = 0;
+    $permanentlyBlocked = !empty($state['permanently_blocked']);
+    $lockoutCount = (int) ($state['lockout_count'] ?? 0);
+    $lockoutWindowStarted = (int) ($state['lockout_window_started'] ?? 0);
+
+    if ($count >= ROSSI_MAX_ATTEMPTS) {
+        if ($lockoutWindowStarted === 0 || $now - $lockoutWindowStarted > ROSSI_LOCKOUT_WINDOW) {
+            $lockoutWindowStarted = $now;
+            $lockoutCount = 0;
+        }
+
+        $lockoutCount++;
+        $permanentlyBlocked = $lockoutCount >= ROSSI_MAX_LOCKOUTS;
+        $blockedUntil = $permanentlyBlocked ? 0 : $now + ROSSI_BLOCK_SECONDS;
+    }
+
     $state = [
         'count' => $count,
         'window_started' => $windowStarted,
-        'blocked_until' => $count >= ROSSI_MAX_ATTEMPTS ? $now + ROSSI_BLOCK_SECONDS : 0,
+        'blocked_until' => $blockedUntil,
+        'lockout_count' => $lockoutCount,
+        'lockout_window_started' => $lockoutWindowStarted,
+        'permanently_blocked' => $permanentlyBlocked,
         'updated_at' => $now,
     ];
 
@@ -125,6 +146,20 @@ function rossi_auth_gate(): array
         $authenticated = false;
     }
 
+    $attemptDir = $securityDir . '/attempts';
+    if (!is_dir($attemptDir) && !@mkdir($attemptDir, 0700, true) && !is_dir($attemptDir)) {
+        http_response_code(503);
+        return ['status' => 'storage-error', 'nonce' => $nonce];
+    }
+
+    $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+    $attemptPath = $attemptDir . '/' . hash('sha256', $ip) . '.json';
+    $state = rossi_read_attempt($attemptPath);
+    if (!empty($state['permanently_blocked'])) {
+        http_response_code(403);
+        return ['status' => 'permanently-blocked', 'nonce' => $nonce];
+    }
+
     if ($authenticated) {
         $_SESSION['last_activity'] = $now;
     }
@@ -150,15 +185,6 @@ function rossi_auth_gate(): array
         ];
     }
 
-    $attemptDir = $securityDir . '/attempts';
-    if (!is_dir($attemptDir) && !@mkdir($attemptDir, 0700, true) && !is_dir($attemptDir)) {
-        http_response_code(503);
-        return ['status' => 'storage-error', 'nonce' => $nonce];
-    }
-
-    $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-    $attemptPath = $attemptDir . '/' . hash('sha256', $ip) . '.json';
-    $state = rossi_read_attempt($attemptPath);
     $blockedUntil = (int) ($state['blocked_until'] ?? 0);
     $error = '';
     $remaining = max(0, ROSSI_MAX_ATTEMPTS - (int) ($state['count'] ?? 0));
@@ -211,6 +237,11 @@ function rossi_auth_gate(): array
                     'csrf' => (string) $_SESSION['csrf'],
                     'blocked_seconds' => ROSSI_BLOCK_SECONDS,
                 ];
+            }
+
+            if (!empty($state['permanently_blocked'])) {
+                http_response_code(403);
+                return ['status' => 'permanently-blocked', 'nonce' => $nonce];
             }
 
             http_response_code(401);

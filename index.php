@@ -151,6 +151,9 @@ function e(string $value): string
       <div class="mark">ROSSI TOOLS / BLOCKED</div><h1>Access<br>blocked.</h1>
       <p>로그인 시도가 너무 많아 이 IP의 접속이 일시적으로 차단되었습니다.</p>
       <p class="status-line">재시도 가능: 약 <?= max(1, (int) ceil(((int) $auth['blocked_seconds']) / 60)) ?>분 후</p>
+    <?php elseif ($status === 'permanently-blocked'): ?>
+      <div class="mark">ROSSI TOOLS / FORBIDDEN</div><h1>Access<br>denied.</h1>
+      <p>비정상적인 반복 로그인 시도로 이 IP의 접근이 차단되었습니다.</p>
     <?php else: ?>
       <div class="mark">ROSSI TOOLS / OFFLINE</div><h1>Setup<br>required.</h1>
       <p><?= $status === 'storage-error' ? '로그인 보안 저장소를 사용할 수 없습니다.' : '사이트 보안 설정이 아직 완료되지 않았습니다.' ?></p>

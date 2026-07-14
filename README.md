@@ -9,6 +9,7 @@ PHP 웹호스팅에서 실행하는 개인용 편의 도구 플랫폼입니다.
 
 - 사이트 전체 비밀번호 인증
 - 15분 내 로그인 5회 실패 시 IP별 30분 차단
+- 7일 내 일시 차단이 3회 발생하면 해당 IP를 영구 차단
 - 12시간 동안 활동이 없으면 세션 만료
 - CSRF 방지, 보안 쿠키, CSP 및 주요 보안 헤더 적용
 - 비밀번호 해시는 공개 저장소가 아닌 계정 홈의 `.rossi-tools/security.php`에 저장
@@ -27,6 +28,12 @@ php /home/hkz3dtrsnk2pyzow/repositories/wp_sms_api_reminder/bin/set-password.php
 
 ```bash
 php /home/hkz3dtrsnk2pyzow/repositories/wp_sms_api_reminder/bin/clear-lockouts.php
+```
+
+특정 IP만 해제하려면 아래처럼 실행합니다.
+
+```bash
+php /home/hkz3dtrsnk2pyzow/repositories/wp_sms_api_reminder/bin/unblock-ip.php 203.0.113.12
 ```
 
 ## 배포
