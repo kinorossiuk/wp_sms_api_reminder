@@ -94,7 +94,7 @@ function e(string $value): string
       <nav class="global-nav" aria-label="도구 바로가기">
         <a href="/tools/qr/"<?= $currentTool === 'qr' ? ' aria-current="page"' : '' ?>>QR</a>
         <a href="/tools/sms/"<?= $currentTool === 'sms' ? ' aria-current="page"' : '' ?>>SMS</a>
-        <a href="/tools/test-data/"<?= $currentTool === 'test-data' ? ' aria-current="page"' : '' ?>>TEST DATA2</a>
+        <a href="/tools/test-data/"<?= $currentTool === 'test-data' ? ' aria-current="page"' : '' ?>>Test Data</a>
       </nav>
       <form class="logout-form" method="post" action="/">
         <input type="hidden" name="action" value="logout">

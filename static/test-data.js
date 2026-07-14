@@ -238,19 +238,20 @@
   const verifyWebm = (data) => new Promise((resolve, reject) => {
     const url = URL.createObjectURL(new Blob([data], { type: 'video/webm' }));
     const video = document.createElement('video');
-    const timeout = window.setTimeout(() => finish(new Error('생성된 WebM의 재생 정보를 확인하지 못했습니다.')), 5000);
+    const timeout = window.setTimeout(() => finish(new Error('생성된 WebM의 재생 정보를 확인하지 못했습니다.')), 8000);
     const finish = (error) => {
       window.clearTimeout(timeout);
       video.removeAttribute('src');
       URL.revokeObjectURL(url);
       if (error) reject(error); else resolve();
     };
-    video.preload = 'metadata';
-    video.onloadedmetadata = () => video.videoWidth > 0 && video.videoHeight > 0
-      ? finish()
-      : finish(new Error('영상 프레임이 없는 WebM이 생성되었습니다. 다시 시도해 주세요.'));
+    video.preload = 'auto';
+    video.muted = true;
+    video.playsInline = true;
+    video.onloadeddata = () => finish();
     video.onerror = () => finish(new Error('생성된 WebM을 브라우저에서 재생할 수 없습니다.'));
     video.src = url;
+    video.load();
   });
 
   const makeWebm = async (target) => {
