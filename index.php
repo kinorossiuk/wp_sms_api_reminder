@@ -34,9 +34,12 @@ function e(string $value): string
     a { color:inherit; }
     button,input { font:inherit; }
     .shell { width:min(1180px,92vw); margin:0 auto; padding:0 0 5rem; }
-    .topbar { min-height:82px; display:flex; align-items:center; justify-content:space-between; gap:1rem; border-bottom:1px solid var(--line); }
+    .topbar { min-height:82px; display:flex; align-items:center; gap:1rem; border-bottom:1px solid var(--line); }
     .brand { color:var(--text); text-decoration:none; font-size:1.1rem; font-weight:850; letter-spacing:-.04em; }
     .brand span { color:var(--acid); }
+    .global-nav { display:flex; align-items:center; gap:.3rem; margin-left:auto; }
+    .global-nav a { border:1px solid transparent; color:var(--muted); padding:.55rem .65rem; text-decoration:none; font:.7rem ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.04em; }
+    .global-nav a:hover,.global-nav a[aria-current="page"] { border-color:var(--line); color:var(--acid); background:var(--surface); }
     .logout-form { margin:0; }
     .ghost { margin:0; border:1px solid var(--line); background:transparent; color:var(--muted); padding:.65rem .85rem; cursor:pointer; }
     .hero { padding:clamp(4rem,9vw,8rem) 0 4rem; display:grid; grid-template-columns:1fr auto; align-items:end; gap:2rem; }
@@ -80,7 +83,7 @@ function e(string $value): string
     .tool-intro { max-width:38rem; color:var(--muted); font-size:1rem; line-height:1.7; }
     .coming-soon { display:inline-block; margin-top:2rem; padding:.75rem 1rem; border:1px solid var(--line); color:var(--muted); font:.72rem ui-monospace,SFMono-Regular,Menlo,monospace; }
     .not-found { padding:8rem 0; }
-    @media (max-width:760px) { .hero { grid-template-columns:1fr; } .tool-count { width:max-content; } .tool-grid { grid-template-columns:1fr; } .tool-card { min-height:230px; } .topbar { min-height:70px; } }
+    @media (max-width:760px) { .hero { grid-template-columns:1fr; } .tool-count { width:max-content; } .tool-grid { grid-template-columns:1fr; } .tool-card { min-height:230px; } .topbar { min-height:70px; gap:.45rem; } .global-nav { order:3; width:100%; margin:0; overflow-x:auto; padding-bottom:.65rem; } .global-nav a { flex:0 0 auto; } }
   </style>
 </head>
 <body class="<?= $status === 'authenticated' ? '' : 'access-page' ?>">
@@ -88,6 +91,11 @@ function e(string $value): string
   <div class="shell">
     <header class="topbar">
       <a class="brand" href="/">ROSSI<span>•</span>TOOLS</a>
+      <nav class="global-nav" aria-label="도구 바로가기">
+        <a href="/tools/qr/"<?= $currentTool === 'qr' ? ' aria-current="page"' : '' ?>>QR</a>
+        <a href="/tools/sms/"<?= $currentTool === 'sms' ? ' aria-current="page"' : '' ?>>SMS</a>
+        <a href="/tools/test-data/"<?= $currentTool === 'test-data' ? ' aria-current="page"' : '' ?>>TEST DATA2</a>
+      </nav>
       <form class="logout-form" method="post" action="/">
         <input type="hidden" name="action" value="logout">
         <input type="hidden" name="csrf" value="<?= e((string) $auth['csrf']) ?>">

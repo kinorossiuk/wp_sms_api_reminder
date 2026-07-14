@@ -14,6 +14,8 @@
   const fileName = root.querySelector('#file-name');
   const dimension = root.querySelector('#image-dimension');
   const imageOption = root.querySelector('.file-image-option');
+  const videoDuration = root.querySelector('#video-duration');
+  const videoOption = root.querySelector('.file-video-option');
   const fileHint = root.querySelector('#file-hint');
   const fileStatus = root.querySelector('#file-status');
   const messageForm = root.querySelector('#test-message-form');
@@ -218,31 +220,77 @@
     throw new Error('동영상 패딩을 만들지 못했습니다.');
   };
 
+  const openWebmSegment = (data) => {
+    for (let index = 0; index <= data.length - 12; index += 1) {
+      if (data[index] !== 0x18 || data[index + 1] !== 0x53 || data[index + 2] !== 0x80 || data[index + 3] !== 0x67) continue;
+      const firstSizeByte = data[index + 4];
+      let sizeLength = 1;
+      while (sizeLength <= 8 && (firstSizeByte & (1 << (8 - sizeLength))) === 0) sizeLength += 1;
+      if (sizeLength !== 8) throw new Error('이 브라우저의 WebM 구조는 정확한 용량 생성에 지원되지 않습니다. Chrome 또는 Edge를 사용해 주세요.');
+      const output = data.slice();
+      output[index + 4] = 0x01;
+      output.fill(0xff, index + 5, index + 12);
+      return output;
+    }
+    throw new Error('생성된 WebM의 영상 구간을 찾지 못했습니다. 다시 시도해 주세요.');
+  };
+
+  const verifyWebm = (data) => new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(new Blob([data], { type: 'video/webm' }));
+    const video = document.createElement('video');
+    const timeout = window.setTimeout(() => finish(new Error('생성된 WebM의 재생 정보를 확인하지 못했습니다.')), 5000);
+    const finish = (error) => {
+      window.clearTimeout(timeout);
+      video.removeAttribute('src');
+      URL.revokeObjectURL(url);
+      if (error) reject(error); else resolve();
+    };
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => video.videoWidth > 0 && video.videoHeight > 0
+      ? finish()
+      : finish(new Error('영상 프레임이 없는 WebM이 생성되었습니다. 다시 시도해 주세요.'));
+    video.onerror = () => finish(new Error('생성된 WebM을 브라우저에서 재생할 수 없습니다.'));
+    video.src = url;
+  });
+
   const makeWebm = async (target) => {
     if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) throw new Error('이 브라우저는 WebM 동영상 생성을 지원하지 않습니다. Chrome 또는 Edge를 사용해 주세요.');
     const canvas = document.createElement('canvas');
     canvas.width = 640;
     canvas.height = 360;
     const context = canvas.getContext('2d');
-    context.fillStyle = '#20241f'; context.fillRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = '#d7ff5f'; context.fillRect(0, 0, canvas.width, 72);
-    context.fillStyle = '#111310'; context.font = '700 36px system-ui'; context.fillText('ROSSI TEST VIDEO', 42, 47);
-    context.fillStyle = '#f5f3eb'; context.font = '500 24px system-ui'; context.fillText(formatBytes(target), 42, 150);
-    const stream = canvas.captureStream(2);
-    const options = MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? { mimeType: 'video/webm;codecs=vp8' } : { mimeType: 'video/webm' };
+    const drawFrame = (frame) => {
+      context.fillStyle = '#20241f'; context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#d7ff5f'; context.fillRect(0, 0, canvas.width, 72);
+      context.fillStyle = '#111310'; context.font = '700 36px system-ui'; context.fillText('ROSSI TEST VIDEO', 42, 47);
+      context.fillStyle = '#f5f3eb'; context.font = '500 24px system-ui'; context.fillText(formatBytes(target), 42, 150);
+      context.fillStyle = '#a6aca1'; context.font = '500 16px ui-monospace, monospace'; context.fillText(`FRAME ${String(frame).padStart(3, '0')}`, 42, 205);
+      context.fillStyle = frame % 2 ? '#ff8c78' : '#d7ff5f'; context.fillRect(42 + (frame % 12) * 42, 252, 30, 30);
+    };
+    const stream = canvas.captureStream(12);
+    const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find((type) => MediaRecorder.isTypeSupported(type));
+    if (!mimeType) throw new Error('이 브라우저에서 지원하는 WebM 코덱을 찾지 못했습니다. Chrome 또는 Edge를 사용해 주세요.');
+    const options = { mimeType, videoBitsPerSecond: 700000 };
     const chunks = [];
     const recorder = new MediaRecorder(stream, options);
     const stopped = new Promise((resolve, reject) => { recorder.onstop = resolve; recorder.onerror = () => reject(new Error('WebM 동영상 생성에 실패했습니다.')); });
     recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
     recorder.start();
-    await new Promise((resolve) => window.setTimeout(resolve, 600));
+    let frame = 0;
+    drawFrame(frame);
+    const frameTimer = window.setInterval(() => drawFrame(++frame), 80);
+    await new Promise((resolve) => window.setTimeout(resolve, Number(videoDuration.value) * 1000));
+    window.clearInterval(frameTimer);
     recorder.stop();
     await stopped;
     stream.getTracks().forEach((track) => track.stop());
-    const base = new Uint8Array(await new Blob(chunks, { type: 'video/webm' }).arrayBuffer());
+    const base = openWebmSegment(new Uint8Array(await new Blob(chunks, { type: mimeType }).arrayBuffer()));
+    await verifyWebm(base);
     const remaining = target - base.length;
     if (remaining < 3) throw new Error(`선택한 용량이 동영상 최소 크기(${formatBytes(base.length + 3)})보다 작습니다.`);
-    return concat([base, webmPadding(remaining)]);
+    const output = concat([base, webmPadding(remaining)]);
+    await verifyWebm(output);
+    return output;
   };
 
   const targetBytes = () => {
@@ -255,9 +303,11 @@
 
   const updateFileOptions = () => {
     const isImage = fileKind.value === 'png';
+    const isVideo = fileKind.value === 'webm';
     imageOption.hidden = !isImage;
-    fileHint.textContent = fileKind.value === 'webm'
-      ? 'WebM은 브라우저가 만든 0.6초 길이의 테스트 영상입니다. Chrome·Edge에서 가장 안정적입니다.'
+    videoOption.hidden = !isVideo;
+    fileHint.textContent = isVideo
+      ? '선택한 길이만큼 브라우저에서 실제 프레임을 녹화한 WebM입니다. Chrome·Edge에서 가장 안정적입니다.'
       : '실제 파일 형식을 만든 뒤, 보이지 않는 패딩을 추가해 목표 바이트에 맞춥니다. 생성 파일은 서버에 저장되지 않습니다.';
   };
 

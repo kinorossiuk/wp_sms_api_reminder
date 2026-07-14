@@ -36,6 +36,9 @@ declare(strict_types=1);
       <label class="file-image-option">이미지 크기
         <select id="image-dimension" name="dimension"><option value="800x600">800 × 600</option><option value="1280x720">1280 × 720</option><option value="1920x1080">1920 × 1080</option></select>
       </label>
+      <label class="file-video-option" hidden>영상 길이
+        <select id="video-duration" name="duration"><option value="1">1초</option><option value="3">3초</option><option value="5">5초</option><option value="10">10초</option></select>
+      </label>
       <p class="test-hint" id="file-hint">PNG, TXT, PDF, DOCX, XLSX는 목표 바이트에 맞춰 생성합니다. WebM은 최신 Chrome·Edge에서 지원됩니다.</p>
       <button class="primary" type="submit">파일 생성 및 다운로드</button>
       <p class="test-status" id="file-status" role="status" aria-live="polite">1 MiB 이하부터 100 MiB까지 만들 수 있습니다.</p>
