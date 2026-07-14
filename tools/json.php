@@ -16,7 +16,7 @@ $jsonJsVersion = (string) (filemtime(__DIR__ . '/../static/json.js') ?: '1');
 
   <aside class="json-security-note" aria-labelledby="json-security-title">
     <div class="json-security-head">
-      <h2 id="json-security-title">데이터 처리 및 회사망 사용 안내</h2>
+      <h2 id="json-security-title">업무 사용 전 주의사항 및 데이터 처리</h2>
       <span>LOCAL PROCESSING</span>
     </div>
     <ul>

@@ -75,8 +75,9 @@ $limits = is_array($config['limits'] ?? null) ? $config['limits'] : [];
 $allowed = is_array($limits['allowed_recipients'] ?? null) ? implode(', ', $limits['allowed_recipients']) : '';
 $nowMin = (new DateTimeImmutable('now', new DateTimeZone(ROSSI_SMS_TIMEZONE)))->modify('+1 minute')->format('Y-m-d\\TH:i:s');
 function rossi_sms_status_label(string $status): string { return match ($status) { 'SCHEDULED' => '예약됨', 'SENDING' => '발송 중', 'COMPLETE' => '완료', 'CANCELLED' => '취소됨', 'FAILED', 'PARTIAL_FAILED' => '실패', 'UNKNOWN' => '확인 필요', default => $status }; }
+$smsCssVersion = (string) (filemtime(__DIR__ . '/../static/sms.css') ?: '1');
 ?>
-<link rel="stylesheet" href="/static/sms.css">
+<link rel="stylesheet" href="/static/sms.css?v=<?= htmlspecialchars($smsCssVersion, ENT_QUOTES, 'UTF-8') ?>">
 <script defer src="/static/sms.js"></script>
 <section class="tool-view sms-view">
   <a class="back-link" href="/">← 대시보드로</a>
@@ -84,6 +85,7 @@ function rossi_sms_status_label(string $status): string { return match ($status)
   <p class="kicker">SOLAPI / PRIVATE REMINDER</p>
   <h1>SMS<br>예약 발송</h1>
   <p class="tool-intro">개인 알림용 예약 문자입니다. 등록한 발신번호와 허용 수신번호로만 발송하며, 예약 발송 자체는 SOLAPI가 처리합니다.</p>
+  <details class="work-notice"><summary>업무 사용 전 주의사항</summary><ul><li>수신 동의, 발신번호 등록, 회사의 문자 발송 정책을 확인한 뒤 승인된 수신자에게만 발송하세요.</li><li>문자 내용과 수신번호는 SOLAPI로 전송되며 통신 비용이 발생할 수 있습니다. 비밀번호·인증코드·민감정보는 문자에 넣지 마세요.</li><li>API Key, API Secret, 데이터베이스 비밀번호는 관리자만 설정하고 회사의 비밀 관리·교체 정책을 따라야 합니다.</li></ul></details>
   <?php if ($smsNotice !== ''): ?><p class="sms-notice" role="status"><?= e($smsNotice) ?></p><?php endif; ?>
   <?php if ($smsError !== null): ?><p class="error sms-error" role="alert"><?= e($smsError) ?></p><?php endif; ?>
 

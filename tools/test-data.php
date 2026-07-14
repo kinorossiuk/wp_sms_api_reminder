@@ -13,6 +13,8 @@ $testDataJsVersion = (string) (filemtime(__DIR__ . '/../static/test-data.js') ?:
   <h1 id="tool-title">테스트 데이터<br>생성기</h1>
   <p class="tool-intro">파일과 데이터는 브라우저에서만 만들고 바로 내려받습니다. 서버에 저장하거나 전송하지 않습니다.</p>
 
+  <details class="work-notice"><summary>업무 사용 전 주의사항</summary><ul><li>업로드 검증에는 생성기의 더미 파일·더미 연락처만 사용하세요. 실제 고객정보, 임직원 연락처, 업무 문서를 넣지 마세요.</li><li>대용량 파일 생성과 다운로드는 회사 DLP, 저장공간 정책, 네트워크 사용량 제한에 영향을 줄 수 있습니다.</li><li>생성 파일은 승인된 테스트 환경에만 업로드하고, 보안 통제를 우회하거나 서비스 부하를 만들 목적으로 사용하지 마세요.</li></ul></details>
+
   <div class="test-tabs" role="tablist" aria-label="생성기 종류">
     <button class="is-active" type="button" role="tab" aria-selected="true" aria-controls="file-panel" id="file-tab" data-tab="file">용량별 파일</button>
     <button type="button" role="tab" aria-selected="false" aria-controls="message-panel" id="message-tab" data-tab="message">문자 길이</button>

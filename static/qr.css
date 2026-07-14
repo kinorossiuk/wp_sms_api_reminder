@@ -1,4 +1,7 @@
 .qr-tool { max-width:1080px; }
+.work-notice{margin-top:2rem;border:1px solid var(--line);background:var(--surface)}
+.work-notice summary{padding:.9rem 1rem;cursor:pointer;color:var(--acid);font-weight:750;font-size:.8rem}
+.work-notice ul{display:grid;gap:.65rem;margin:0;padding:0 1rem 1rem 2rem;color:var(--muted);font-size:.74rem;line-height:1.6}
 .qr-layout { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr); gap:1.25rem; margin-top:2.5rem; }
 .qr-controls,.qr-output { border:1px solid var(--line); background:var(--surface); padding:1.25rem; }
 .qr-field { margin-bottom:1.1rem; }
