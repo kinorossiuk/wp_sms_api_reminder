@@ -23,4 +23,11 @@ return [
         'path' => '/tools/test-data/',
         'status' => '사용 가능',
     ],
+    'json' => [
+        'name' => 'JSON 뷰어',
+        'description' => 'JSON 문법을 검사하고 보기 좋게 정리하거나 한 줄로 압축합니다.',
+        'category' => '개발',
+        'path' => '/tools/json/',
+        'status' => '사용 가능',
+    ],
 ];
