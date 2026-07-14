@@ -120,6 +120,14 @@ php /home/hkz3dtrsnk2pyzow/repositories/wp_sms_api_reminder/bin/unblock-ip.php 2
 
 ## 배포
 
-cPanel Git Version Control에서 `Update from Remote` 실행 후 `Deploy HEAD Commit`을
-실행합니다. `.cpanel.yml`이 필요한 공개 파일만
-`/home/hkz3dtrsnk2pyzow/public_html/rossiuk.xyz/`로 복사합니다.
+배포는 다음 순서로 완료합니다.
+
+1. 검사한 변경만 커밋하고 `origin/main`에 푸시합니다.
+2. 변경 성격에 맞는 주석 태그를 생성하고 원격에 푸시합니다.
+3. 원격 브랜치와 태그가 새 커밋을 가리키는지 확인합니다.
+4. cPanel Git Version Control에서 `Update from Remote`를 실행합니다.
+5. 이어서 `Deploy HEAD Commit`을 실행합니다.
+
+GitHub 푸시만으로는 운영 사이트 배포가 완료되지 않습니다. `.cpanel.yml`이 필요한
+공개 파일만 `/home/hkz3dtrsnk2pyzow/public_html/rossiuk.xyz/`로 복사합니다.
+Codex 작업 시 상세 완료 기준은 저장소 루트의 `AGENTS.md`를 따릅니다.
