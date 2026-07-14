@@ -23,10 +23,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             rossi_sms_schedule($readyConfig, (string) ($_POST['recipient'] ?? ''), (string) ($_POST['message'] ?? ''), (string) ($_POST['scheduled_at'] ?? ''));
             $smsNotice = 'SOLAPI 예약이 접수되었습니다.';
             $_POST = [];
+        } elseif ($action === 'sms-send-now') {
+            $readyConfig = rossi_sms_config();
+            rossi_sms_send_now($readyConfig, (string) ($_POST['recipient'] ?? ''), (string) ($_POST['message'] ?? ''));
+            $smsNotice = 'SOLAPI에 즉시 발송을 접수했습니다.';
+            $_POST = [];
         } elseif ($action === 'sms-cancel') {
             $readyConfig = rossi_sms_config();
             rossi_sms_cancel($readyConfig, (string) ($_POST['public_id'] ?? ''));
             $smsNotice = '예약 취소 요청을 처리했습니다.';
+            $_POST = [];
+        } elseif ($action === 'sms-refresh-status') {
+            $readyConfig = rossi_sms_config();
+            $result = rossi_sms_sync_statuses($readyConfig, 10);
+            $smsNotice = '발송 상태를 확인했습니다. (' . $result['checked'] . '건 조회)';
             $_POST = [];
         } else {
             throw new RuntimeException('알 수 없는 SMS 요청입니다.');
@@ -39,9 +49,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $config = rossi_sms_raw_config();
 $configured = false;
 $schedules = [];
+$accountSummary = null;
 if (rossi_sms_is_configured()) {
     try {
         $readyConfig = rossi_sms_config();
+        rossi_sms_sync_statuses($readyConfig, 10);
         $schedules = rossi_sms_list($readyConfig);
         $configured = true;
     } catch (Throwable $error) {
@@ -50,11 +62,18 @@ if (rossi_sms_is_configured()) {
         }
     }
 }
+if ($configured) {
+    try {
+        $accountSummary = rossi_sms_account_summary($readyConfig);
+    } catch (Throwable) {
+        // 잔액 API가 일시적으로 실패해도 예약 기능은 계속 제공한다.
+    }
+}
 $db = is_array($config['database'] ?? null) ? $config['database'] : [];
 $solapi = is_array($config['solapi'] ?? null) ? $config['solapi'] : [];
 $limits = is_array($config['limits'] ?? null) ? $config['limits'] : [];
 $allowed = is_array($limits['allowed_recipients'] ?? null) ? implode(', ', $limits['allowed_recipients']) : '';
-$nowMin = (new DateTimeImmutable('now', new DateTimeZone(ROSSI_SMS_TIMEZONE)))->modify('+2 minutes')->format('Y-m-d\\TH:i');
+$nowMin = (new DateTimeImmutable('now', new DateTimeZone(ROSSI_SMS_TIMEZONE)))->modify('+1 minute')->format('Y-m-d\\TH:i:s');
 function rossi_sms_status_label(string $status): string { return match ($status) { 'SCHEDULED' => '예약됨', 'SENDING' => '발송 중', 'COMPLETE' => '완료', 'CANCELLED' => '취소됨', 'FAILED', 'PARTIAL_FAILED' => '실패', 'UNKNOWN' => '확인 필요', default => $status }; }
 ?>
 <link rel="stylesheet" href="/static/sms.css">
@@ -68,13 +87,18 @@ function rossi_sms_status_label(string $status): string { return match ($status)
   <?php if ($smsError !== null): ?><p class="error sms-error" role="alert"><?= e($smsError) ?></p><?php endif; ?>
 
   <?php if ($configured): ?>
+    <?php if ($accountSummary !== null): ?><section class="sms-balance" aria-label="SOLAPI 잔액 및 발송 가능 건수">
+      <div><span>사용 가능 잔액</span><strong><?= number_format((float) $accountSummary['balance']) ?>원</strong><small>포인트 <?= number_format((float) $accountSummary['point']) ?>원 별도</small></div>
+      <div><span>SMS 단가 / 예상 건수</span><strong><?= number_format((float) $accountSummary['sms_price']) ?>원 · <?= number_format((int) $accountSummary['sms_count']) ?>건</strong><small>현금·예치금 기준의 예상치</small></div>
+      <div><span>LMS 단가 / 예상 건수</span><strong><?= number_format((float) $accountSummary['lms_price']) ?>원 · <?= number_format((int) $accountSummary['lms_count']) ?>건</strong><small>실제 과금은 SOLAPI 최종 처리 기준</small></div>
+    </section><?php endif; ?>
     <form class="sms-form" method="post">
-      <input type="hidden" name="action" value="sms-schedule"><input type="hidden" name="csrf" value="<?= e((string) $auth['csrf']) ?>">
+      <input type="hidden" name="csrf" value="<?= e((string) $auth['csrf']) ?>">
       <label>수신번호 <input name="recipient" required inputmode="tel" placeholder="01012345678" value="<?= e((string) ($_POST['recipient'] ?? '')) ?>"></label>
-      <label>예약 시각 (KST) <input name="scheduled_at" type="datetime-local" min="<?= e($nowMin) ?>" required value="<?= e((string) ($_POST['scheduled_at'] ?? '')) ?>"></label>
+      <label>예약 시각 (KST) <input name="scheduled_at" type="datetime-local" step="1" min="<?= e($nowMin) ?>" required value="<?= e((string) ($_POST['scheduled_at'] ?? '')) ?>"></label>
       <label class="sms-message">메시지 <textarea name="message" required maxlength="2000" placeholder="알림 내용을 입력하세요."><?= e((string) ($_POST['message'] ?? '')) ?></textarea><span>SMS 90바이트 초과 시 LMS로 자동 전환됩니다.</span></label>
       <p class="hint">발신번호: <?= e((string) $solapi['sender']) ?> · 허용 수신번호: <?= e($allowed) ?></p>
-      <button class="primary" type="submit">SOLAPI에 예약 접수</button>
+      <div class="sms-actions"><button class="primary" type="submit" name="action" value="sms-schedule">SOLAPI에 예약 접수</button><button class="ghost" type="submit" name="action" value="sms-send-now" formnovalidate>지금 즉시 발송</button></div>
     </form>
   <?php endif; ?>
 
@@ -96,7 +120,7 @@ function rossi_sms_status_label(string $status): string { return match ($status)
     </form>
   </details>
 
-  <?php if ($configured): ?><section class="sms-history"><h2>최근 예약</h2><?php if ($schedules === []): ?><p class="hint">아직 예약된 문자가 없습니다.</p><?php else: ?>
+  <?php if ($configured): ?><section class="sms-history"><div class="sms-history-head"><h2>최근 예약</h2><form method="post"><input type="hidden" name="action" value="sms-refresh-status"><input type="hidden" name="csrf" value="<?= e((string) $auth['csrf']) ?>"><button class="ghost" type="submit">상태 새로고침</button></form></div><?php if ($schedules === []): ?><p class="hint">아직 예약된 문자가 없습니다.</p><?php else: ?>
     <?php foreach ($schedules as $item): ?><article class="sms-row"><div><strong><?= e(rossi_sms_status_label((string) $item['status'])) ?></strong><span><?= e((string) $item['scheduled_at_kst']) ?> KST · <?= e((string) $item['recipient']) ?></span><p><?= nl2br(e((string) $item['message'])) ?></p></div><?php if ((string) $item['status'] === 'SCHEDULED'): ?><form method="post"><input type="hidden" name="action" value="sms-cancel"><input type="hidden" name="csrf" value="<?= e((string) $auth['csrf']) ?>"><input type="hidden" name="public_id" value="<?= e((string) $item['public_id']) ?>"><button class="ghost" type="submit">취소</button></form><?php endif; ?></article><?php endforeach; ?>
   <?php endif; ?></section><?php endif; ?>
 </section>

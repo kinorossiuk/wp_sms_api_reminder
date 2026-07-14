@@ -292,14 +292,15 @@ function rossi_sms_validate_message(string $text): string
 function rossi_sms_validate_schedule(string $value): DateTimeImmutable
 {
     $timezone = new DateTimeZone(ROSSI_SMS_TIMEZONE);
-    $date = DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $value, $timezone);
+    $format = strlen($value) === 19 ? 'Y-m-d\TH:i:s' : 'Y-m-d\TH:i';
+    $date = DateTimeImmutable::createFromFormat($format, $value, $timezone);
     $errors = DateTimeImmutable::getLastErrors();
     if ($date === false || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
         throw new InvalidArgumentException('예약 시각이 올바르지 않습니다.');
     }
     $now = new DateTimeImmutable('now', $timezone);
-    if ($date < $now->modify('+2 minutes')) {
-        throw new InvalidArgumentException('예약 시각은 현재부터 2분 이후로 설정해 주세요.');
+    if ($date < $now->modify('+1 minute')) {
+        throw new InvalidArgumentException('예약 시각은 현재부터 1분 이후로 설정해 주세요.');
     }
     if ($date > $now->modify('+6 months')) {
         throw new InvalidArgumentException('예약은 최대 6개월 이내로 설정할 수 있습니다.');
@@ -385,6 +386,24 @@ function rossi_sms_provider_request(array $config, string $method, string $path,
     return $payload;
 }
 
+function rossi_sms_account_summary(array $config): array
+{
+    $balance = rossi_sms_provider_request($config, 'GET', '/cash/v1/balance');
+    $pricing = rossi_sms_provider_request($config, 'GET', '/pricing/v1/messaging?countryId=82&serviceMethod=MT');
+    $available = max(0.0, (float) ($balance['balance'] ?? 0));
+    $smsPrice = max(0.0, (float) ($pricing['sms'] ?? 0));
+    $lmsPrice = max(0.0, (float) ($pricing['lms'] ?? 0));
+
+    return [
+        'balance' => $available,
+        'point' => max(0.0, (float) ($balance['point'] ?? 0)),
+        'sms_price' => $smsPrice,
+        'lms_price' => $lmsPrice,
+        'sms_count' => $smsPrice > 0 ? (int) floor($available / $smsPrice) : null,
+        'lms_count' => $lmsPrice > 0 ? (int) floor($available / $lmsPrice) : null,
+    ];
+}
+
 function rossi_sms_insert_creating(PDO $pdo, array $config, string $phone, string $message, DateTimeImmutable $scheduledAt): array
 {
     $dailyLimit = max(1, (int) ($config['limits']['daily_max'] ?? 20));
@@ -424,28 +443,46 @@ function rossi_sms_insert_creating(PDO $pdo, array $config, string $phone, strin
 
 function rossi_sms_schedule(array $config, string $phoneValue, string $messageValue, string $scheduledValue): string
 {
+    return rossi_sms_dispatch($config, $phoneValue, $messageValue, rossi_sms_validate_schedule($scheduledValue));
+}
+
+function rossi_sms_send_now(array $config, string $phoneValue, string $messageValue): string
+{
+    return rossi_sms_dispatch($config, $phoneValue, $messageValue, null);
+}
+
+function rossi_sms_dispatch(array $config, string $phoneValue, string $messageValue, ?DateTimeImmutable $scheduledAt): string
+{
     $phone = rossi_sms_normalize_phone($phoneValue);
     $message = rossi_sms_validate_message($messageValue);
-    $scheduledAt = rossi_sms_validate_schedule($scheduledValue);
     $sender = rossi_sms_normalize_phone((string) $config['solapi']['sender']);
     if (!rossi_sms_allowed_recipient($phone, $config)) {
         throw new RuntimeException('허용된 수신번호로만 예약할 수 있습니다.');
     }
 
     $pdo = rossi_sms_pdo($config);
-    $record = rossi_sms_insert_creating($pdo, $config, $phone, $message, $scheduledAt);
+    $record = rossi_sms_insert_creating(
+        $pdo,
+        $config,
+        $phone,
+        $message,
+        $scheduledAt ?? new DateTimeImmutable('now', new DateTimeZone(ROSSI_SMS_TIMEZONE))
+    );
     try {
-        $response = rossi_sms_provider_request($config, 'POST', '/messages/v4/send-many/detail', [
+        $payload = [
             'messages' => [[
                 'to' => $phone,
                 'from' => $sender,
                 'text' => $message,
                 'autoTypeDetect' => true,
             ]],
-            'scheduledDate' => $scheduledAt->format(DateTimeInterface::ATOM),
             'strict' => true,
             'allowDuplicates' => false,
-        ]);
+        ];
+        if ($scheduledAt !== null) {
+            $payload['scheduledDate'] = $scheduledAt->format(DateTimeInterface::ATOM);
+        }
+        $response = rossi_sms_provider_request($config, 'POST', '/messages/v4/send-many/detail', $payload);
         $group = is_array($response['groupInfo'] ?? null) ? $response['groupInfo'] : [];
         $messages = is_array($response['messageList'] ?? null) ? $response['messageList'] : [];
         $firstMessage = $messages === [] ? [] : reset($messages);
@@ -453,9 +490,10 @@ function rossi_sms_schedule(array $config, string $phoneValue, string $messageVa
             throw new RossiSmsProviderException('SOLAPI가 예약 접수 정보를 반환하지 않았습니다.', 200, $response);
         }
         $statement = $pdo->prepare(
-            'UPDATE sms_schedules SET status = \'SCHEDULED\', provider_group_id = :group_id, provider_message_id = :message_id, provider_status = :provider_status, updated_at = :updated_at WHERE id = :id'
+            'UPDATE sms_schedules SET status = :status, provider_group_id = :group_id, provider_message_id = :message_id, provider_status = :provider_status, updated_at = :updated_at WHERE id = :id'
         );
         $statement->execute([
+            ':status' => $scheduledAt === null ? 'SENDING' : 'SCHEDULED',
             ':group_id' => (string) $group['groupId'],
             ':message_id' => (string) ($firstMessage['messageId'] ?? ''),
             ':provider_status' => (string) ($group['status'] ?? 'SCHEDULED'),
@@ -542,7 +580,7 @@ function rossi_sms_sync_statuses(array $config, int $limit = 5): array
             $providerStatus = (string) ($group['status'] ?? 'UNKNOWN');
             $status = match ($providerStatus) {
                 'SCHEDULED' => 'SCHEDULED',
-                'SENDING', 'PROCESSING' => 'SENDING',
+                'PENDING', 'SENDING', 'PROCESSING' => 'SENDING',
                 'COMPLETE' => ((int) ($group['count']['sentFailed'] ?? 0) > 0 ? 'PARTIAL_FAILED' : 'COMPLETE'),
                 'FAILED', 'SYSTEM-ERROR' => 'FAILED',
                 default => 'UNKNOWN',
