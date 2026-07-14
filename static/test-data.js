@@ -14,8 +14,6 @@
   const fileName = root.querySelector('#file-name');
   const dimension = root.querySelector('#image-dimension');
   const imageOption = root.querySelector('.file-image-option');
-  const videoDuration = root.querySelector('#video-duration');
-  const videoOption = root.querySelector('.file-video-option');
   const fileHint = root.querySelector('#file-hint');
   const fileStatus = root.querySelector('#file-status');
   const messageForm = root.querySelector('#test-message-form');
@@ -32,6 +30,8 @@
   const contactCsv = root.querySelector('#contact-csv');
   const contactStatus = root.querySelector('#contact-status');
   const maxBytes = 100 * 1024 * 1024;
+  const maxVideoBytes = 300 * 1024 * 1024;
+  const webmBitrate = 12_000_000;
   let contacts = [];
 
   const setStatus = (element, text, isError = false) => {
@@ -42,6 +42,12 @@
   const formatBytes = (bytes) => bytes >= 1024 * 1024
     ? `${(bytes / (1024 * 1024)).toFixed(bytes % (1024 * 1024) === 0 ? 0 : 2)} MiB`
     : `${bytes.toLocaleString('ko-KR')} bytes`;
+
+  const formatDuration = (seconds) => seconds >= 60
+    ? `${Math.floor(seconds / 60)}분 ${seconds % 60}초`
+    : `${seconds}초`;
+
+  const webmDurationForTarget = (target) => Math.max(1, Math.ceil((target * 8) / webmBitrate));
 
   const safeName = (value, fallback) => {
     const cleaned = value.trim().replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-').replace(/^\.+|\.+$/g, '');
@@ -205,8 +211,19 @@
     canvas.width = 640;
     canvas.height = 360;
     const context = canvas.getContext('2d');
+    const noise = context.createImageData(canvas.width, canvas.height);
+    let noiseSeed = 0x12345678;
     const drawFrame = (frame) => {
-      context.fillStyle = '#20241f'; context.fillRect(0, 0, canvas.width, canvas.height);
+      for (let index = 0; index < noise.data.length; index += 4) {
+        noiseSeed = (noiseSeed * 1664525 + 1013904223) >>> 0;
+        const shade = noiseSeed >>> 24;
+        noise.data[index] = shade >> 2;
+        noise.data[index + 1] = 40 + (shade >> 1);
+        noise.data[index + 2] = 24 + (shade >> 3);
+        noise.data[index + 3] = 255;
+      }
+      context.putImageData(noise, 0, 0);
+      context.fillStyle = 'rgba(32, 36, 31, .82)'; context.fillRect(0, 0, canvas.width, canvas.height);
       context.fillStyle = '#d7ff5f'; context.fillRect(0, 0, canvas.width, 72);
       context.fillStyle = '#111310'; context.font = '700 36px system-ui'; context.fillText('ROSSI TEST VIDEO', 42, 47);
       context.fillStyle = '#f5f3eb'; context.font = '500 24px system-ui'; context.fillText(formatBytes(target), 42, 150);
@@ -216,32 +233,30 @@
     const stream = canvas.captureStream(12);
     const mimeType = ['video/webm;codecs=vp8', 'video/webm'].find((type) => MediaRecorder.isTypeSupported(type));
     if (!mimeType) throw new Error('이 브라우저에서 지원하는 WebM 코덱을 찾지 못했습니다. Chrome 또는 Edge를 사용해 주세요.');
-    const durationSeconds = Number(videoDuration.value);
-    const requestedBitrate = Math.ceil((target * 8 * 1.05) / durationSeconds);
-    const maxBitrate = 12_000_000;
-    if (requestedBitrate > maxBitrate) throw new Error(`${durationSeconds}초 영상으로는 이 용량을 모바일 호환 방식으로 만들기 어렵습니다. 영상 길이를 10초로 늘리거나 용량을 낮춰 주세요.`);
-    const options = { mimeType, videoBitsPerSecond: Math.max(250_000, requestedBitrate) };
+    const durationSeconds = webmDurationForTarget(target);
+    const options = { mimeType, videoBitsPerSecond: webmBitrate };
     const chunks = [];
     const recorder = new MediaRecorder(stream, options);
     const stopped = new Promise((resolve, reject) => { recorder.onstop = resolve; recorder.onerror = () => reject(new Error('WebM 동영상 생성에 실패했습니다.')); });
     recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
-    recorder.start();
+    recorder.start(1000);
     let frame = 0;
     drawFrame(frame);
     const frameTimer = window.setInterval(() => drawFrame(++frame), 80);
-    await new Promise((resolve) => window.setTimeout(resolve, Number(videoDuration.value) * 1000));
+    await new Promise((resolve) => window.setTimeout(resolve, durationSeconds * 1000));
     window.clearInterval(frameTimer);
     recorder.stop();
     await stopped;
     stream.getTracks().forEach((track) => track.stop());
-    return new Uint8Array(await new Blob(chunks, { type: mimeType }).arrayBuffer());
+    return { blob: new Blob(chunks, { type: mimeType }), durationSeconds };
   };
 
   const targetBytes = () => {
     const size = Number(fileSize.value);
     if (!Number.isFinite(size) || size < 1) throw new Error('용량은 1 이상으로 입력해 주세요.');
     const bytes = Math.round(size * (fileUnit.value === 'MiB' ? 1024 * 1024 : 1000 * 1000));
-    if (bytes > maxBytes) throw new Error('브라우저 안정성을 위해 한 번에 최대 100 MiB까지만 만들 수 있습니다.');
+    const limit = fileKind.value === 'webm' ? maxVideoBytes : maxBytes;
+    if (bytes > limit) throw new Error(`이 파일 종류는 한 번에 최대 ${formatBytes(limit)}까지만 만들 수 있습니다.`);
     return bytes;
   };
 
@@ -249,9 +264,9 @@
     const isImage = fileKind.value === 'png';
     const isVideo = fileKind.value === 'webm';
     imageOption.hidden = !isImage;
-    videoOption.hidden = !isVideo;
+    fileSize.max = isVideo ? '300' : '100';
     fileHint.textContent = isVideo
-      ? '모바일 호환을 위해 실제 WebM을 녹화합니다. 파일 크기는 목표 용량에 가깝게 생성되며 정확히 일치하지 않을 수 있습니다.'
+      ? '모바일 호환을 위해 실제 WebM을 녹화합니다. 목표 용량에 맞춰 영상 길이를 자동으로 정합니다. 실제 파일 크기는 목표에 가깝게 생성됩니다.'
       : '실제 파일 형식을 만든 뒤, 보이지 않는 패딩을 추가해 목표 바이트에 맞춥니다. 생성 파일은 서버에 저장되지 않습니다.';
   };
 
@@ -270,19 +285,26 @@
       const kind = fileKind.value;
       const button = fileForm.querySelector('button[type="submit"]');
       button.disabled = true;
-      setStatus(fileStatus, '파일을 생성하고 있습니다…');
+      setStatus(fileStatus, kind === 'webm'
+        ? `WebM을 실제 녹화 중입니다… 예상 길이 ${formatDuration(webmDurationForTarget(target))}`
+        : '파일을 생성하고 있습니다…');
       let data;
+      let videoDurationSeconds;
       if (kind === 'png') data = await makePng(target);
       else if (kind === 'txt') data = makeText(target);
       else if (kind === 'pdf') data = makePdf(target);
       else if (kind === 'docx') data = makeDocx(target);
       else if (kind === 'xlsx') data = makeXlsx(target);
-      else data = await makeWebm(target);
+      else {
+        const webm = await makeWebm(target);
+        data = webm.blob;
+        videoDurationSeconds = webm.durationSeconds;
+      }
       if (kind !== 'webm' && data.length !== target) throw new Error(`목표 용량과 다릅니다 (${data.length.toLocaleString('ko-KR')} bytes).`);
       const mime = { png: 'image/png', txt: 'text/plain;charset=utf-8', pdf: 'application/pdf', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', webm: 'video/webm' }[kind];
-      download(new Blob([data], { type: mime }), `${safeName(fileName.value, 'test-file')}.${kind}`);
+      download(kind === 'webm' ? data : new Blob([data], { type: mime }), `${safeName(fileName.value, 'test-file')}.${kind}`);
       setStatus(fileStatus, kind === 'webm'
-        ? `WebM 영상 ${formatBytes(data.length)}을 만들었습니다. 목표: ${formatBytes(target)}`
+        ? `WebM 영상 ${formatBytes(data.size)}을 만들었습니다. 자동 지정 길이: ${formatDuration(videoDurationSeconds)} · 목표: ${formatBytes(target)}`
         : `${kind.toUpperCase()} 파일 ${formatBytes(data.length)}을 만들었습니다.`);
       button.disabled = false;
     } catch (error) {
