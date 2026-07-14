@@ -77,6 +77,7 @@ $nowMin = (new DateTimeImmutable('now', new DateTimeZone(ROSSI_SMS_TIMEZONE)))->
 function rossi_sms_status_label(string $status): string { return match ($status) { 'SCHEDULED' => '예약됨', 'SENDING' => '발송 중', 'COMPLETE' => '완료', 'CANCELLED' => '취소됨', 'FAILED', 'PARTIAL_FAILED' => '실패', 'UNKNOWN' => '확인 필요', default => $status }; }
 ?>
 <link rel="stylesheet" href="/static/sms.css">
+<script defer src="/static/sms.js"></script>
 <section class="tool-view sms-view">
   <a class="back-link" href="/">← 대시보드로</a>
   <div class="tool-view-icon" aria-hidden="true">✉</div>
@@ -120,7 +121,7 @@ function rossi_sms_status_label(string $status): string { return match ($status)
     </form>
   </details>
 
-  <?php if ($configured): ?><section class="sms-history"><div class="sms-history-head"><h2>최근 예약</h2><form method="post"><input type="hidden" name="action" value="sms-refresh-status"><input type="hidden" name="csrf" value="<?= e((string) $auth['csrf']) ?>"><button class="ghost" type="submit">상태 새로고침</button></form></div><?php if ($schedules === []): ?><p class="hint">아직 예약된 문자가 없습니다.</p><?php else: ?>
+  <?php if ($configured): ?><section class="sms-history"><div class="sms-history-head"><h2>최근 예약</h2><form method="post" data-sms-status-refresh><input type="hidden" name="action" value="sms-refresh-status"><input type="hidden" name="csrf" value="<?= e((string) $auth['csrf']) ?>"><button class="ghost" type="submit">상태 새로고침</button><span class="sms-auto-refresh">탭을 보는 동안 1분마다 자동 확인</span></form></div><?php if ($schedules === []): ?><p class="hint">아직 예약된 문자가 없습니다.</p><?php else: ?>
     <?php foreach ($schedules as $item): ?><article class="sms-row"><div><strong><?= e(rossi_sms_status_label((string) $item['status'])) ?></strong><span><?= e((string) $item['scheduled_at_kst']) ?> KST · <?= e((string) $item['recipient']) ?></span><p><?= nl2br(e((string) $item['message'])) ?></p></div><?php if ((string) $item['status'] === 'SCHEDULED'): ?><form method="post"><input type="hidden" name="action" value="sms-cancel"><input type="hidden" name="csrf" value="<?= e((string) $auth['csrf']) ?>"><input type="hidden" name="public_id" value="<?= e((string) $item['public_id']) ?>"><button class="ghost" type="submit">취소</button></form><?php endif; ?></article><?php endforeach; ?>
   <?php endif; ?></section><?php endif; ?>
 </section>
