@@ -153,8 +153,25 @@ function rossi_auth_gate(): array
     }
 
     $config = require $configPath;
-    $passwordHash = is_array($config) ? (string) ($config['password_hash'] ?? '') : '';
-    if ($passwordHash === '' || password_get_info($passwordHash)['algo'] === 0) {
+    $passwordHashes = [];
+    if (is_array($config)) {
+        $configuredHashes = $config['password_hashes'] ?? [];
+        if (is_array($configuredHashes)) {
+            foreach ($configuredHashes as $configuredHash) {
+                if (is_string($configuredHash) && password_get_info($configuredHash)['algo'] !== 0) {
+                    $passwordHashes[] = $configuredHash;
+                }
+            }
+        }
+
+        // v1.6.4 이전에 만든 설정도 그대로 로그인할 수 있도록 유지합니다.
+        $legacyHash = (string) ($config['password_hash'] ?? '');
+        if ($legacyHash !== '' && password_get_info($legacyHash)['algo'] !== 0) {
+            $passwordHashes[] = $legacyHash;
+        }
+    }
+    $passwordHashes = array_values(array_unique($passwordHashes));
+    if ($passwordHashes === []) {
         http_response_code(503);
         return ['status' => 'setup', 'nonce' => $nonce];
     }
@@ -249,7 +266,13 @@ function rossi_auth_gate(): array
                 $password = '';
             }
 
-            if (password_verify($password, $passwordHash)) {
+            $passwordMatches = false;
+            foreach ($passwordHashes as $passwordHash) {
+                // 모든 해시를 확인해 어느 비밀번호가 사용됐는지 외부에 드러나지 않게 합니다.
+                $passwordMatches = password_verify($password, $passwordHash) || $passwordMatches;
+            }
+
+            if ($passwordMatches) {
                 @unlink($attemptPath);
                 session_regenerate_id(true);
                 $_SESSION['authenticated'] = true;
