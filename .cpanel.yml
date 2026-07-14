@@ -7,3 +7,4 @@ deployment:
     - /bin/cp .htaccess $DEPLOYPATH
     - /bin/cp -R app $DEPLOYPATH
     - /bin/cp -R tools $DEPLOYPATH
+    - /bin/cp -R static $DEPLOYPATH
