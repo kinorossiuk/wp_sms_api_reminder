@@ -1,0 +1,29 @@
+# Crunz 3.x scheduler configuration.
+# Tasks run from the private Git repository, not from public_html.
+source: tasks
+suffix: Tasks.php
+timezone: Asia/Seoul
+timezone_log: true
+
+log_errors: true
+errors_log_file: /home/hkz3dtrsnk2pyzow/.rossi-tools/crunz-errors.log
+log_output: false
+output_log_file: ~
+log_allow_line_breaks: false
+log_ignore_empty_context: true
+
+email_output: false
+email_errors: false
+
+mailer:
+    transport: smtp
+    recipients: ~
+    sender_name: ~
+    sender_email: ~
+
+smtp:
+    host: ~
+    port: ~
+    username: ~
+    password: ~
+    encryption: ~

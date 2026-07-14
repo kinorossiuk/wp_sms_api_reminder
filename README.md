@@ -15,6 +15,33 @@ PHP 웹호스팅에서 실행하는 개인용 편의 도구 플랫폼입니다.
 QR 인코딩에는 `qrcode-generator` v2.0.4(MIT)를 `static/vendor/`에 포함합니다.
 자세한 고지 사항은 `THIRD_PARTY_NOTICES.md`를 확인하세요.
 
+## 예약 작업(Crunz)
+
+Crunz 런타임은 Git 저장소와 공개 웹 루트 밖의
+`~/.rossi-tools/crunz-runtime/`에 설치합니다. 예약 작업 정의는 `tasks/`, 설정은
+`crunz.yml`에서 관리합니다.
+
+현재 등록된 작업은 다음과 같습니다.
+
+- 5분마다 `~/.rossi-tools/cron-status.json`을 원자적으로 갱신
+- 매일 03:20에 1 MiB를 넘은 Crunz 로그를 최근 256 KiB로 정리
+- 두 작업 모두 파일 잠금으로 중복 실행 방지
+
+배포 후 작업 목록과 강제 실행을 확인합니다.
+
+```bash
+cd /home/hkz3dtrsnk2pyzow/repositories/wp_sms_api_reminder
+/usr/local/bin/php /home/hkz3dtrsnk2pyzow/.rossi-tools/crunz-runtime/vendor/bin/crunz schedule:list
+/usr/local/bin/php /home/hkz3dtrsnk2pyzow/.rossi-tools/crunz-runtime/vendor/bin/crunz schedule:run --force
+cat /home/hkz3dtrsnk2pyzow/.rossi-tools/cron-status.json
+```
+
+cPanel Cron Jobs에는 매분 실행하도록 아래 명령을 하나만 등록합니다.
+
+```bash
+cd /home/hkz3dtrsnk2pyzow/repositories/wp_sms_api_reminder && /usr/local/bin/php /home/hkz3dtrsnk2pyzow/.rossi-tools/crunz-runtime/vendor/bin/crunz schedule:run >> /home/hkz3dtrsnk2pyzow/.rossi-tools/crunz-runner.log 2>&1
+```
+
 ## 보안 정책
 
 - 사이트 전체 비밀번호 인증
