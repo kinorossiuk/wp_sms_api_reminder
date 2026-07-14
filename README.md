@@ -1,6 +1,27 @@
-# rossiuk.xyz
+# ROSSI TOOLS
 
-PHP 웹호스팅 배포 확인용 Hello World 페이지입니다.
+PHP 웹호스팅에서 실행하는 개인용 편의 도구 플랫폼입니다.
 
-`.cpanel.yml`은 cPanel Git Version Control 배포 시 `index.php`와 `.htaccess`를
-`/home/hkz3dtrsnk2pyzow/public_html/`로 복사합니다.
+## 보안 정책
+
+- 사이트 전체 비밀번호 인증
+- 15분 내 로그인 5회 실패 시 IP별 30분 차단
+- 12시간 동안 활동이 없으면 세션 만료
+- CSRF 방지, 보안 쿠키, CSP 및 주요 보안 헤더 적용
+- 비밀번호 해시는 공개 저장소가 아닌 계정 홈의 `.rossi-tools/security.php`에 저장
+
+## 최초 비밀번호 설정
+
+cPanel 터미널에서 Git 저장소의 설정 스크립트를 실행합니다.
+
+```bash
+php /home/hkz3dtrsnk2pyzow/repositories/wp_sms_api_reminder/bin/set-password.php
+```
+
+12자 이상의 비밀번호를 두 번 입력합니다. 입력값은 터미널 화면에 표시되지 않습니다.
+
+## 배포
+
+cPanel Git Version Control에서 `Update from Remote` 실행 후 `Deploy HEAD Commit`을
+실행합니다. `.cpanel.yml`이 필요한 공개 파일만
+`/home/hkz3dtrsnk2pyzow/public_html/rossiuk.xyz/`로 복사합니다.

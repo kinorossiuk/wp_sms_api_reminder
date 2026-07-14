@@ -1,0 +1,228 @@
+<?php
+declare(strict_types=1);
+
+const ROSSI_MAX_ATTEMPTS = 5;
+const ROSSI_ATTEMPT_WINDOW = 900;
+const ROSSI_BLOCK_SECONDS = 1800;
+const ROSSI_SESSION_SECONDS = 43200;
+
+function rossi_security_dir(): string
+{
+    $configured = getenv('ROSSI_TOOLS_SECURITY_DIR');
+    if (is_string($configured) && $configured !== '') {
+        return rtrim($configured, '/');
+    }
+
+    $home = getenv('HOME');
+    if (!is_string($home) || $home === '') {
+        $home = dirname(__DIR__, 3);
+    }
+
+    return rtrim($home, '/') . '/.rossi-tools';
+}
+
+function rossi_read_attempt(string $path): array
+{
+    $handle = @fopen($path, 'rb');
+    if ($handle === false) {
+        return [];
+    }
+
+    flock($handle, LOCK_SH);
+    $contents = stream_get_contents($handle);
+    flock($handle, LOCK_UN);
+    fclose($handle);
+
+    $decoded = json_decode((string) $contents, true);
+    return is_array($decoded) ? $decoded : [];
+}
+
+function rossi_record_failure(string $path, int $now): ?array
+{
+    $handle = @fopen($path, 'c+');
+    if ($handle === false || !flock($handle, LOCK_EX)) {
+        if (is_resource($handle)) {
+            fclose($handle);
+        }
+        return null;
+    }
+
+    rewind($handle);
+    $decoded = json_decode((string) stream_get_contents($handle), true);
+    $state = is_array($decoded) ? $decoded : [];
+    $windowStarted = (int) ($state['window_started'] ?? 0);
+    $count = (int) ($state['count'] ?? 0);
+    if ($windowStarted === 0 || $now - $windowStarted > ROSSI_ATTEMPT_WINDOW) {
+        $windowStarted = $now;
+        $count = 0;
+    }
+
+    $count++;
+    $state = [
+        'count' => $count,
+        'window_started' => $windowStarted,
+        'blocked_until' => $count >= ROSSI_MAX_ATTEMPTS ? $now + ROSSI_BLOCK_SECONDS : 0,
+        'updated_at' => $now,
+    ];
+
+    ftruncate($handle, 0);
+    rewind($handle);
+    $written = fwrite($handle, json_encode($state, JSON_UNESCAPED_SLASHES));
+    fflush($handle);
+    flock($handle, LOCK_UN);
+    fclose($handle);
+    @chmod($path, 0600);
+
+    return $written === false ? null : $state;
+}
+
+function rossi_auth_gate(): array
+{
+    $nonce = bin2hex(random_bytes(16));
+    header("Content-Security-Policy: default-src 'self'; style-src 'nonce-{$nonce}'; img-src 'self' data:; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: DENY');
+    header('Referrer-Policy: no-referrer');
+    header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+    header('Cache-Control: no-store, private');
+
+    $securityDir = rossi_security_dir();
+    $configPath = $securityDir . '/security.php';
+    if (!is_file($configPath)) {
+        http_response_code(503);
+        return ['status' => 'setup', 'nonce' => $nonce];
+    }
+
+    $config = require $configPath;
+    $passwordHash = is_array($config) ? (string) ($config['password_hash'] ?? '') : '';
+    if ($passwordHash === '' || password_get_info($passwordHash)['algo'] === 0) {
+        http_response_code(503);
+        return ['status' => 'setup', 'nonce' => $nonce];
+    }
+
+    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    session_name('ROSSITOOLSSESSID');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => $secure,
+        'httponly' => true,
+        'samesite' => 'Strict',
+    ]);
+    session_start();
+
+    if (!isset($_SESSION['csrf'])) {
+        $_SESSION['csrf'] = bin2hex(random_bytes(32));
+    }
+
+    $now = time();
+    $authenticated = !empty($_SESSION['authenticated']);
+    $lastActivity = (int) ($_SESSION['last_activity'] ?? 0);
+    if ($authenticated && ($lastActivity === 0 || $now - $lastActivity > ROSSI_SESSION_SECONDS)) {
+        $_SESSION = [];
+        session_regenerate_id(true);
+        $_SESSION['csrf'] = bin2hex(random_bytes(32));
+        $authenticated = false;
+    }
+
+    if ($authenticated) {
+        $_SESSION['last_activity'] = $now;
+    }
+
+    $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+    $action = (string) ($_POST['action'] ?? '');
+    $csrf = (string) ($_POST['csrf'] ?? '');
+
+    if ($method === 'POST' && $action === 'logout' && $authenticated) {
+        if (hash_equals((string) $_SESSION['csrf'], $csrf)) {
+            $_SESSION = [];
+            session_destroy();
+            header('Location: /', true, 303);
+            exit;
+        }
+    }
+
+    if ($authenticated) {
+        return [
+            'status' => 'authenticated',
+            'nonce' => $nonce,
+            'csrf' => (string) $_SESSION['csrf'],
+        ];
+    }
+
+    $attemptDir = $securityDir . '/attempts';
+    if (!is_dir($attemptDir) && !@mkdir($attemptDir, 0700, true) && !is_dir($attemptDir)) {
+        http_response_code(503);
+        return ['status' => 'storage-error', 'nonce' => $nonce];
+    }
+
+    $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+    $attemptPath = $attemptDir . '/' . hash('sha256', $ip) . '.json';
+    $state = rossi_read_attempt($attemptPath);
+    $blockedUntil = (int) ($state['blocked_until'] ?? 0);
+    $error = '';
+    $remaining = max(0, ROSSI_MAX_ATTEMPTS - (int) ($state['count'] ?? 0));
+
+    if ($blockedUntil > $now) {
+        $retry = $blockedUntil - $now;
+        http_response_code(429);
+        header('Retry-After: ' . $retry);
+        return [
+            'status' => 'blocked',
+            'nonce' => $nonce,
+            'csrf' => (string) $_SESSION['csrf'],
+            'blocked_seconds' => $retry,
+        ];
+    }
+
+    if ($method === 'POST' && $action === 'login') {
+        if (!hash_equals((string) $_SESSION['csrf'], $csrf)) {
+            http_response_code(403);
+            $error = '요청이 만료되었습니다. 페이지를 새로고침해 주세요.';
+        } else {
+            $password = (string) ($_POST['password'] ?? '');
+            if (strlen($password) > 4096) {
+                $password = '';
+            }
+
+            if (password_verify($password, $passwordHash)) {
+                @unlink($attemptPath);
+                session_regenerate_id(true);
+                $_SESSION['authenticated'] = true;
+                $_SESSION['last_activity'] = $now;
+                $_SESSION['csrf'] = bin2hex(random_bytes(32));
+                header('Location: /', true, 303);
+                exit;
+            }
+
+            $state = rossi_record_failure($attemptPath, $now);
+            if ($state === null) {
+                http_response_code(503);
+                return ['status' => 'storage-error', 'nonce' => $nonce];
+            }
+
+            $remaining = max(0, ROSSI_MAX_ATTEMPTS - (int) $state['count']);
+            if ($state['blocked_until'] > $now) {
+                http_response_code(429);
+                header('Retry-After: ' . ROSSI_BLOCK_SECONDS);
+                return [
+                    'status' => 'blocked',
+                    'nonce' => $nonce,
+                    'csrf' => (string) $_SESSION['csrf'],
+                    'blocked_seconds' => ROSSI_BLOCK_SECONDS,
+                ];
+            }
+
+            http_response_code(401);
+            $error = '비밀번호가 올바르지 않습니다.';
+        }
+    }
+
+    return [
+        'status' => 'login',
+        'nonce' => $nonce,
+        'csrf' => (string) $_SESSION['csrf'],
+        'error' => $error,
+        'remaining' => $remaining,
+    ];
+}
