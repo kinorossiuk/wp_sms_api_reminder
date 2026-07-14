@@ -445,7 +445,6 @@ function rossi_sms_schedule(array $config, string $phoneValue, string $messageVa
             'scheduledDate' => $scheduledAt->format(DateTimeInterface::ATOM),
             'strict' => true,
             'allowDuplicates' => false,
-            'customFields' => ['rossiScheduleId' => $record['public_id']],
         ]);
         $group = is_array($response['groupInfo'] ?? null) ? $response['groupInfo'] : [];
         $messages = is_array($response['messageList'] ?? null) ? $response['messageList'] : [];
