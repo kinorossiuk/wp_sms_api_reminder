@@ -42,13 +42,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $config = rossi_sms_raw_config();
 $configured = false;
 $schedules = [];
-if ($smsError === null && rossi_sms_is_configured()) {
+if (rossi_sms_is_configured()) {
     try {
         $readyConfig = rossi_sms_config();
         $schedules = rossi_sms_list($readyConfig);
         $configured = true;
     } catch (Throwable $error) {
-        $smsError = $error->getMessage();
+        if ($smsError === null) {
+            $smsError = $error->getMessage();
+        }
     }
 }
 $db = is_array($config['database'] ?? null) ? $config['database'] : [];
