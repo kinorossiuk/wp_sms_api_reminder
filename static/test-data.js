@@ -284,7 +284,7 @@
   };
 
   const makeMp4 = async (target) => {
-    const response = await fetch('/static/test-video.mp4', { cache: 'force-cache' });
+    const response = await fetch('/static/test-video.mp4?v=2', { cache: 'no-cache' });
     if (!response.ok) throw new Error('MP4 원본 영상을 불러오지 못했습니다. 다시 시도해 주세요.');
     const template = new Uint8Array(await response.arrayBuffer());
     if (target < template.length + 8) throw new Error(`선택한 용량이 MP4 최소 크기(${formatBytes(template.length + 8)})보다 작습니다.`);
