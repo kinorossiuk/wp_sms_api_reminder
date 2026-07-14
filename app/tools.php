@@ -9,4 +9,11 @@ return [
         'path' => '/tools/qr/',
         'status' => '사용 가능',
     ],
+    'sms' => [
+        'name' => 'SMS 예약 발송',
+        'description' => 'SOLAPI로 개인 알림을 예약하고 발송 상태를 확인합니다.',
+        'category' => '알림',
+        'path' => '/tools/sms/',
+        'status' => '설정 필요',
+    ],
 ];

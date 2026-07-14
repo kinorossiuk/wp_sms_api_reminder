@@ -3,7 +3,25 @@
 PHP 웹호스팅에서 실행하는 개인용 편의 도구 플랫폼입니다.
 
 도구 목록은 `app/tools.php`에서 관리하며, 각 도구 화면은 `tools/{slug}.php`에
-추가합니다. 현재 QR 코드 생성기까지 구현되어 있습니다.
+추가합니다. 현재 QR 코드 생성기와 SOLAPI SMS 예약 발송 도구가 구현되어 있습니다.
+
+## SOLAPI SMS 예약 발송
+
+`/tools/sms/`의 설정 화면에서 MySQL 연결 정보, SOLAPI API Key/Secret, 활성 발신번호,
+허용 수신번호를 입력합니다. API Secret과 DB 비밀번호는 저장 후 다시 표시하지 않으며,
+웹 루트 밖 `~/.rossi-tools/sms.php`에 소유자 전용 권한으로 저장됩니다.
+
+먼저 cPanel의 **MySQL Databases**에서 데이터베이스와 사용자를 만들고 모든 권한을
+부여한 뒤, 웹 설정 화면에서 연결 정보를 저장하세요. 설정을 저장한 다음 cPanel
+터미널에서 테이블을 한 번 생성합니다.
+
+```bash
+php /home/hkz3dtrsnk2pyzow/repositories/wp_sms_api_reminder/bin/setup-sms-db.php
+```
+
+SOLAPI 콘솔에서 발신번호를 사전에 등록·활성화해야 합니다. 예약 발송은 SOLAPI가 직접
+처리하고, 외부 heartbeat는 5분마다 예약 상태만 동기화합니다. 수신번호는 설정한
+허용 목록으로 제한되고, 기본 하루 예약 한도는 20건입니다.
 
 ## QR 코드 생성기
 

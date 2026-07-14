@@ -99,6 +99,11 @@ function rossi_cron_tasks(): array
             'retry_seconds' => 60,
             'handler' => 'rossi_cron_task_health',
         ],
+        'sms-status-sync' => [
+            'schedule' => ['type' => 'interval', 'seconds' => 300],
+            'retry_seconds' => 120,
+            'handler' => 'rossi_cron_task_sms_status_sync',
+        ],
         'log-maintenance' => [
             'schedule' => ['type' => 'daily', 'at' => '03:20'],
             'retry_seconds' => 300,
@@ -256,6 +261,25 @@ function rossi_cron_task_log_maintenance(DateTimeImmutable $now): void
             throw new RuntimeException('Unable to trim scheduler log: ' . basename($log));
         }
         @chmod($log, 0600);
+    }
+}
+
+function rossi_cron_task_sms_status_sync(DateTimeImmutable $now): void
+{
+    require_once __DIR__ . '/sms.php';
+    if (!rossi_sms_is_configured()) {
+        return;
+    }
+    try {
+        $result = rossi_sms_sync_statuses(rossi_sms_config());
+        rossi_cron_write_json(rossi_cron_private_dir() . '/sms-sync-status.json', [
+            'schema' => 1,
+            'checked_at' => $now->format(DateTimeInterface::ATOM),
+            'checked' => $result['checked'],
+            'updated' => $result['updated'],
+        ]);
+    } catch (Throwable $error) {
+        rossi_cron_log('SMS status sync skipped: ' . substr($error->getMessage(), 0, 300));
     }
 }
 
