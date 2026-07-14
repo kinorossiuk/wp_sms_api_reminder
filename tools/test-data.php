@@ -1,7 +1,11 @@
 <?php
 declare(strict_types=1);
 ?>
-<link rel="stylesheet" href="/static/test-data.css">
+<?php
+$testDataCssVersion = (string) (filemtime(__DIR__ . '/../static/test-data.css') ?: '1');
+$testDataJsVersion = (string) (filemtime(__DIR__ . '/../static/test-data.js') ?: '1');
+?>
+<link rel="stylesheet" href="/static/test-data.css?v=<?= htmlspecialchars($testDataCssVersion, ENT_QUOTES, 'UTF-8') ?>">
 <section class="tool-view test-data-view" aria-labelledby="tool-title" data-test-data-tool>
   <a class="back-link" href="/">← 모든 도구</a>
   <div class="tool-view-icon" aria-hidden="true">▣</div>
@@ -68,4 +72,4 @@ declare(strict_types=1);
     </form>
   </section>
 </section>
-<script defer src="/static/test-data.js"></script>
+<script defer src="/static/test-data.js?v=<?= htmlspecialchars($testDataJsVersion, ENT_QUOTES, 'UTF-8') ?>"></script>
