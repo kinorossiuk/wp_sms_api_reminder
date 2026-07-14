@@ -144,9 +144,9 @@ function e(string $value): string
 <?php else: ?>
   <main class="access-main">
     <?php if ($status === 'login'): ?>
-      <div class="mark">ROSSI TOOLS / RESTRICTED</div>
-      <h1>Private<br>access.</h1>
-      <p>현재 준비 중인 사이트입니다. 접근 비밀번호를 입력해 주세요.</p>
+      <div class="mark">ROSSI TOOLS / PRIVATE ACCESS</div>
+      <h1>Private<br>tools.</h1>
+      <p>승인된 사용자만 사용할 수 있는 개인용 편의 도구입니다. 접근 비밀번호를 입력해 주세요.</p>
       <form class="panel" method="post" autocomplete="on">
         <input type="hidden" name="action" value="login">
         <input type="hidden" name="csrf" value="<?= e((string) $auth['csrf']) ?>">
