@@ -78,8 +78,8 @@ function e(string $value): string
     .tool-view { padding:clamp(3rem,8vw,7rem) 0; max-width:820px; }
     .back-link { display:inline-block; margin-bottom:4rem; color:var(--muted); text-decoration:none; font-size:.8rem; }
     .back-link:hover { color:var(--acid); }
-    .tool-view-icon { width:76px; height:76px; display:grid; place-items:center; margin-bottom:2rem; color:#10120f; background:var(--acid); }
-    .tool-view-icon svg { width:44px; fill:currentColor; }
+    .tool-view-icon { width:76px; height:76px; display:grid; place-items:center; margin-bottom:2rem; color:#10120f; background:var(--acid); font-size:46px; font-weight:800; line-height:1; }
+    .tool-view-icon svg { width:48px; height:48px; fill:currentColor; }
     .tool-intro { max-width:38rem; color:var(--muted); font-size:1rem; line-height:1.7; }
     .coming-soon { display:inline-block; margin-top:2rem; padding:.75rem 1rem; border:1px solid var(--line); color:var(--muted); font:.72rem ui-monospace,SFMono-Regular,Menlo,monospace; }
     .not-found { padding:8rem 0; }
