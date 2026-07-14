@@ -20,6 +20,12 @@ php /home/hkz3dtrsnk2pyzow/repositories/wp_sms_api_reminder/bin/set-password.php
 
 12자 이상의 비밀번호를 두 번 입력합니다. 입력값은 터미널 화면에 표시되지 않습니다.
 
+관리자가 차단됐을 때는 아래 명령으로 모든 IP 잠금 기록만 초기화할 수 있습니다.
+
+```bash
+php /home/hkz3dtrsnk2pyzow/repositories/wp_sms_api_reminder/bin/clear-lockouts.php
+```
+
 ## 배포
 
 cPanel Git Version Control에서 `Update from Remote` 실행 후 `Deploy HEAD Commit`을
