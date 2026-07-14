@@ -14,6 +14,19 @@ $jsonJsVersion = (string) (filemtime(__DIR__ . '/../static/json.js') ?: '1');
   <h1 id="tool-title">JSON<br>뷰어</h1>
   <p class="tool-intro">JSON 문법을 검사하고 읽기 좋게 정리하거나 한 줄로 압축합니다. 입력 내용은 브라우저 안에서만 처리됩니다.</p>
 
+  <aside class="json-security-note" aria-labelledby="json-security-title">
+    <div class="json-security-head">
+      <h2 id="json-security-title">데이터 처리 및 회사망 사용 안내</h2>
+      <span>LOCAL PROCESSING</span>
+    </div>
+    <ul>
+      <li><strong>서버 미전송·미저장</strong><span>붙여 넣거나 파일로 연 JSON은 브라우저 메모리에서만 처리하며 서버, 외부 API, 분석 서비스로 보내지 않습니다.</span></li>
+      <li><strong>사용자 요청만 실행</strong><span>클립보드 복사와 JSON 다운로드는 해당 버튼을 직접 눌렀을 때만 실행됩니다.</span></li>
+      <li><strong>회사 보안 정책 우선</strong><span>Falcon, Ivanti, 사내 Wi-Fi, 브라우저 DLP 등 회사 보안 솔루션은 접속·파일·클립보드 활동을 별도로 기록하거나 제한할 수 있습니다.</span></li>
+      <li><strong>민감정보 주의</strong><span>회사 승인 없이 비밀번호, API Key, 인증 토큰, 고객정보 또는 사내 기밀 데이터를 입력하지 마세요.</span></li>
+    </ul>
+  </aside>
+
   <div class="json-toolbar" aria-label="JSON 보기 설정">
     <label for="json-indent">들여쓰기
       <select id="json-indent">
