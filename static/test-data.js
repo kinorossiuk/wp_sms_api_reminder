@@ -47,6 +47,7 @@
     : `${seconds}초`;
 
   const webmDurationForTarget = (target) => Math.max(1, Math.ceil((target * 8) / webmBitrate));
+  const mp4DurationForTarget = (target) => webmDurationForTarget(target);
 
   const safeName = (value, fallback) => {
     const cleaned = value.trim().replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-').replace(/^\.+|\.+$/g, '');
@@ -252,22 +253,54 @@
     return { blob: new Blob(chunks, { type: 'video/webm' }), durationSeconds };
   };
 
+  const readBe32 = (data, offset) => ((data[offset] * 0x1000000) + (data[offset + 1] << 16) + (data[offset + 2] << 8) + data[offset + 3]);
+  const writeBe32 = (data, offset, value) => data.set(be32(value), offset);
+
+  const findMp4Box = (data, type) => {
+    const bytes = ascii(type);
+    for (let index = 4; index <= data.length - 4; index += 1) {
+      if (bytes.every((byte, offset) => data[index + offset] === byte)) return index;
+    }
+    throw new Error(`MP4 ${type} 메타데이터를 찾지 못했습니다.`);
+  };
+
+  const setMp4Duration = (data, durationSeconds) => {
+    const movieHeader = findMp4Box(data, 'mvhd');
+    const trackHeader = findMp4Box(data, 'tkhd');
+    const mediaHeader = findMp4Box(data, 'mdhd');
+    const timeToSample = findMp4Box(data, 'stts');
+    const editList = findMp4Box(data, 'elst');
+    const movieTimescale = readBe32(data, movieHeader + 16);
+    const mediaTimescale = readBe32(data, mediaHeader + 16);
+    const sampleCount = readBe32(data, timeToSample + 12);
+    const mediaDuration = mediaTimescale * durationSeconds;
+    if (!Number.isSafeInteger(mediaDuration) || mediaDuration > 0xffffffff) throw new Error('선택한 MP4 길이가 너무 깁니다.');
+    writeBe32(data, movieHeader + 20, movieTimescale * durationSeconds);
+    writeBe32(data, trackHeader + 24, movieTimescale * durationSeconds);
+    writeBe32(data, mediaHeader + 20, mediaDuration);
+    writeBe32(data, timeToSample + 16, Math.max(1, Math.round(mediaDuration / sampleCount)));
+    writeBe32(data, editList + 12, movieTimescale * durationSeconds);
+    return data;
+  };
+
   const makeMp4 = async (target) => {
     const response = await fetch('/static/test-video.mp4', { cache: 'force-cache' });
     if (!response.ok) throw new Error('MP4 원본 영상을 불러오지 못했습니다. 다시 시도해 주세요.');
-    const template = await response.blob();
-    if (target < template.size + 8) throw new Error(`선택한 용량이 MP4 최소 크기(${formatBytes(template.size + 8)})보다 작습니다.`);
-    const freeBoxSize = target - template.size;
+    const template = new Uint8Array(await response.arrayBuffer());
+    if (target < template.length + 8) throw new Error(`선택한 용량이 MP4 최소 크기(${formatBytes(template.length + 8)})보다 작습니다.`);
+    const durationSeconds = mp4DurationForTarget(target);
+    const timedTemplate = setMp4Duration(template, durationSeconds);
+    const freeBoxSize = target - timedTemplate.length;
     const header = concat([be32(freeBoxSize), ascii('free')]);
     const zeroChunk = new Uint8Array(Math.min(1024 * 1024, freeBoxSize - 8));
-    const parts = [template, header];
+    const parts = [timedTemplate, header];
     let remaining = freeBoxSize - 8;
     while (remaining > 0) {
       const length = Math.min(remaining, zeroChunk.length);
       parts.push(length === zeroChunk.length ? zeroChunk : zeroChunk.subarray(0, length));
       remaining -= length;
     }
-    return new Blob(parts, { type: 'video/mp4' });
+    return { blob: new Blob(parts, { type: 'video/mp4' }), durationSeconds };
   };
 
   const targetBytes = () => {
@@ -284,7 +317,7 @@
     imageOption.hidden = !isImage;
     fileSize.max = '300';
     fileHint.textContent = fileKind.value === 'mp4'
-      ? 'H.264 Baseline MP4(1초)로 생성합니다. MP4 표준 여유 영역을 사용해 목표 바이트에 정확히 맞추므로 업로드 포맷 테스트에 적합합니다.'
+      ? 'H.264 Baseline MP4로 생성합니다. 목표 용량에 따라 영상 길이를 자동 지정하고, MP4 표준 여유 영역으로 목표 바이트에 정확히 맞춥니다.'
       : isVideo
       ? '모바일 호환을 위해 실제 WebM을 녹화합니다. 목표 용량에 맞춰 영상 길이를 자동으로 정합니다. 실제 파일 크기는 목표에 가깝게 생성됩니다.'
       : '실제 파일 형식을 만든 뒤, 보이지 않는 패딩을 추가해 목표 바이트에 맞춥니다. 최대 300 MiB까지 가능하며 큰 파일은 충분한 브라우저 메모리가 필요합니다.';
@@ -315,7 +348,11 @@
       else if (kind === 'pdf') data = makePdf(target);
       else if (kind === 'docx') data = makeDocx(target);
       else if (kind === 'xlsx') data = makeXlsx(target);
-      else if (kind === 'mp4') data = await makeMp4(target);
+      else if (kind === 'mp4') {
+        const mp4 = await makeMp4(target);
+        data = mp4.blob;
+        videoDurationSeconds = mp4.durationSeconds;
+      }
       else {
         const webm = await makeWebm(target);
         data = webm.blob;
@@ -328,7 +365,7 @@
       setStatus(fileStatus, kind === 'webm'
         ? `WebM 영상 ${formatBytes(data.size)}을 만들었습니다. 자동 지정 길이: ${formatDuration(videoDurationSeconds)} · 목표: ${formatBytes(target)}`
         : kind === 'mp4'
-          ? `H.264 MP4 영상 ${formatBytes(data.size)}을 만들었습니다. 길이: 1초 · 목표 용량과 일치합니다.`
+          ? `H.264 MP4 영상 ${formatBytes(data.size)}을 만들었습니다. 자동 지정 길이: ${formatDuration(videoDurationSeconds)} · 목표 용량과 일치합니다.`
         : `${kind.toUpperCase()} 파일 ${formatBytes(data.length)}을 만들었습니다.`);
       button.disabled = false;
     } catch (error) {
