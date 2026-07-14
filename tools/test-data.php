@@ -28,6 +28,7 @@ $testDataJsVersion = (string) (filemtime(__DIR__ . '/../static/test-data.js') ?:
           <option value="pdf">PDF 문서</option>
           <option value="docx">DOCX 문서</option>
           <option value="xlsx">XLSX 스프레드시트</option>
+          <option value="mp4">MP4 동영상 (H.264)</option>
           <option value="webm">WebM 동영상</option>
         </select>
       </label>

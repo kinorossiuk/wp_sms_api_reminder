@@ -247,7 +247,27 @@
     recorder.stop();
     await stopped;
     stream.getTracks().forEach((track) => track.stop());
-    return { blob: new Blob(chunks, { type: mimeType }), durationSeconds };
+    // Upload validators commonly accept the registered WebM MIME type only;
+    // keep codec selection for recording but save the downloaded file as video/webm.
+    return { blob: new Blob(chunks, { type: 'video/webm' }), durationSeconds };
+  };
+
+  const makeMp4 = async (target) => {
+    const response = await fetch('/static/test-video.mp4', { cache: 'force-cache' });
+    if (!response.ok) throw new Error('MP4 원본 영상을 불러오지 못했습니다. 다시 시도해 주세요.');
+    const template = await response.blob();
+    if (target < template.size + 8) throw new Error(`선택한 용량이 MP4 최소 크기(${formatBytes(template.size + 8)})보다 작습니다.`);
+    const freeBoxSize = target - template.size;
+    const header = concat([be32(freeBoxSize), ascii('free')]);
+    const zeroChunk = new Uint8Array(Math.min(1024 * 1024, freeBoxSize - 8));
+    const parts = [template, header];
+    let remaining = freeBoxSize - 8;
+    while (remaining > 0) {
+      const length = Math.min(remaining, zeroChunk.length);
+      parts.push(length === zeroChunk.length ? zeroChunk : zeroChunk.subarray(0, length));
+      remaining -= length;
+    }
+    return new Blob(parts, { type: 'video/mp4' });
   };
 
   const targetBytes = () => {
@@ -260,10 +280,12 @@
 
   const updateFileOptions = () => {
     const isImage = fileKind.value === 'png';
-    const isVideo = fileKind.value === 'webm';
+    const isVideo = fileKind.value === 'webm' || fileKind.value === 'mp4';
     imageOption.hidden = !isImage;
     fileSize.max = '300';
-    fileHint.textContent = isVideo
+    fileHint.textContent = fileKind.value === 'mp4'
+      ? 'H.264 Baseline MP4(1초)로 생성합니다. MP4 표준 여유 영역을 사용해 목표 바이트에 정확히 맞추므로 업로드 포맷 테스트에 적합합니다.'
+      : isVideo
       ? '모바일 호환을 위해 실제 WebM을 녹화합니다. 목표 용량에 맞춰 영상 길이를 자동으로 정합니다. 실제 파일 크기는 목표에 가깝게 생성됩니다.'
       : '실제 파일 형식을 만든 뒤, 보이지 않는 패딩을 추가해 목표 바이트에 맞춥니다. 최대 300 MiB까지 가능하며 큰 파일은 충분한 브라우저 메모리가 필요합니다.';
   };
@@ -293,16 +315,20 @@
       else if (kind === 'pdf') data = makePdf(target);
       else if (kind === 'docx') data = makeDocx(target);
       else if (kind === 'xlsx') data = makeXlsx(target);
+      else if (kind === 'mp4') data = await makeMp4(target);
       else {
         const webm = await makeWebm(target);
         data = webm.blob;
         videoDurationSeconds = webm.durationSeconds;
       }
-      if (kind !== 'webm' && data.length !== target) throw new Error(`목표 용량과 다릅니다 (${data.length.toLocaleString('ko-KR')} bytes).`);
-      const mime = { png: 'image/png', txt: 'text/plain;charset=utf-8', pdf: 'application/pdf', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', webm: 'video/webm' }[kind];
-      download(kind === 'webm' ? data : new Blob([data], { type: mime }), `${safeName(fileName.value, 'test-file')}.${kind}`);
+      const dataLength = data instanceof Blob ? data.size : data.length;
+      if (kind !== 'webm' && dataLength !== target) throw new Error(`목표 용량과 다릅니다 (${dataLength.toLocaleString('ko-KR')} bytes).`);
+      const mime = { png: 'image/png', txt: 'text/plain;charset=utf-8', pdf: 'application/pdf', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', webm: 'video/webm', mp4: 'video/mp4' }[kind];
+      download(data instanceof Blob ? data : new Blob([data], { type: mime }), `${safeName(fileName.value, 'test-file')}.${kind}`);
       setStatus(fileStatus, kind === 'webm'
         ? `WebM 영상 ${formatBytes(data.size)}을 만들었습니다. 자동 지정 길이: ${formatDuration(videoDurationSeconds)} · 목표: ${formatBytes(target)}`
+        : kind === 'mp4'
+          ? `H.264 MP4 영상 ${formatBytes(data.size)}을 만들었습니다. 길이: 1초 · 목표 용량과 일치합니다.`
         : `${kind.toUpperCase()} 파일 ${formatBytes(data.length)}을 만들었습니다.`);
       button.disabled = false;
     } catch (error) {
