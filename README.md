@@ -15,32 +15,44 @@ PHP 웹호스팅에서 실행하는 개인용 편의 도구 플랫폼입니다.
 QR 인코딩에는 `qrcode-generator` v2.0.4(MIT)를 `static/vendor/`에 포함합니다.
 자세한 고지 사항은 `THIRD_PARTY_NOTICES.md`를 확인하세요.
 
-## 예약 작업(Crunz)
+## 예약 작업
 
-Crunz 런타임은 Git 저장소와 공개 웹 루트 밖의
-`~/.rossi-tools/crunz-runtime/`에 설치합니다. 예약 작업 정의는 `tasks/`, 설정은
-`crunz.yml`에서 관리합니다.
+호스팅 계정에는 `crontab` 권한이 없으므로 cron-job.org가 `cron.php`를 매분 POST로
+호출합니다. 서버의 경량 스케줄러는 외부 명령을 실행하지 않고 등록된 PHP 함수만
+실행합니다. 일정 판단은 마지막 성공 시각을 기준으로 하므로 외부 호출이 조금
+늦어져도 작업을 놓치지 않습니다.
 
-현재 등록된 작업은 다음과 같습니다.
+- 5분 간격으로 `~/.rossi-tools/cron-status.json` 갱신
+- 매일 03:20 이후 처음 호출될 때 1 MiB 초과 로그를 최근 256 KiB로 정리
+- 전역 파일 잠금으로 중복 요청 차단
+- 작업별 실패 기록 및 재시도 간격 적용
+- 토큰 해시, 실행 상태와 로그는 모두 `~/.rossi-tools`에 저장
 
-- 5분마다 `~/.rossi-tools/cron-status.json`을 원자적으로 갱신
-- 매일 03:20에 1 MiB를 넘은 Crunz 로그를 최근 256 KiB로 정리
-- 두 작업 모두 파일 잠금으로 중복 실행 방지
-
-배포 후 작업 목록과 강제 실행을 확인합니다.
+배포 후 전용 토큰을 생성합니다. 출력된 원본 토큰은 서버에 저장되지 않으며 다시
+표시할 수 없습니다.
 
 ```bash
-cd /home/hkz3dtrsnk2pyzow/repositories/wp_sms_api_reminder
-/usr/local/bin/php /home/hkz3dtrsnk2pyzow/.rossi-tools/crunz-runtime/vendor/bin/crunz schedule:list
-/usr/local/bin/php /home/hkz3dtrsnk2pyzow/.rossi-tools/crunz-runtime/vendor/bin/crunz schedule:run --force
+php /home/hkz3dtrsnk2pyzow/repositories/wp_sms_api_reminder/bin/set-cron-token.php
+```
+
+cron-job.org 작업 설정:
+
+- URL: `https://rossiuk.xyz/cron.php`
+- 실행 간격: 매분
+- 요청 방식: `POST`
+- 요청 헤더 이름: `X-Rossi-Cron-Token`
+- 요청 헤더 값: 위 명령이 출력한 토큰
+- 응답 저장: 사용 안 함
+
+서버에서 작업을 강제로 시험하려면 다음 명령을 사용합니다.
+
+```bash
+php /home/hkz3dtrsnk2pyzow/repositories/wp_sms_api_reminder/bin/run-cron.php --force
 cat /home/hkz3dtrsnk2pyzow/.rossi-tools/cron-status.json
 ```
 
-cPanel Cron Jobs에는 매분 실행하도록 아래 명령을 하나만 등록합니다.
-
-```bash
-cd /home/hkz3dtrsnk2pyzow/repositories/wp_sms_api_reminder && /usr/local/bin/php /home/hkz3dtrsnk2pyzow/.rossi-tools/crunz-runtime/vendor/bin/crunz schedule:run >> /home/hkz3dtrsnk2pyzow/.rossi-tools/crunz-runner.log 2>&1
-```
+토큰이 노출되면 `set-cron-token.php`를 다시 실행하고 cron-job.org의 헤더 값을 새
+토큰으로 교체합니다.
 
 ## 보안 정책
 
@@ -51,6 +63,7 @@ cd /home/hkz3dtrsnk2pyzow/repositories/wp_sms_api_reminder && /usr/local/bin/php
 - 디렉터리 목록, 불필요한 HTTP 메서드, 대용량 요청 차단
 - 12시간 동안 활동이 없으면 세션 만료
 - CSRF 방지, 보안 쿠키, CSP 및 주요 보안 헤더 적용
+- 예약 작업 엔드포인트는 별도 256비트 토큰과 POST 요청으로만 실행
 - 비밀번호 해시는 공개 저장소가 아닌 계정 홈의 `.rossi-tools/security.php`에 저장
 
 ## 최초 비밀번호 설정

@@ -3,6 +3,7 @@ deployment:
   tasks:
     - export DEPLOYPATH=/home/hkz3dtrsnk2pyzow/public_html/rossiuk.xyz/
     - /bin/cp index.php $DEPLOYPATH
+    - /bin/cp cron.php $DEPLOYPATH
     - /bin/cp guard.php $DEPLOYPATH
     - /bin/cp .htaccess $DEPLOYPATH
     - /bin/cp -R app $DEPLOYPATH
