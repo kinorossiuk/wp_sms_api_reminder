@@ -138,7 +138,7 @@ function rossi_record_probe(string $path, int $now, string $requestTarget): ?arr
 function rossi_auth_gate(): array
 {
     $nonce = bin2hex(random_bytes(16));
-    header("Content-Security-Policy: default-src 'self'; style-src 'self' 'nonce-{$nonce}'; img-src 'self' data:; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
+    header("Content-Security-Policy: default-src 'self'; style-src 'self' 'nonce-{$nonce}'; img-src 'self' data: blob:; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: DENY');
     header('Referrer-Policy: no-referrer');
