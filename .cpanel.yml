@@ -1,6 +1,6 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/hkz3dtrsnk2pyzow/public_html/
+    - export DEPLOYPATH=/home/hkz3dtrsnk2pyzow/public_html/rossiuk.xyz/
     - /bin/cp index.php $DEPLOYPATH
     - /bin/cp .htaccess $DEPLOYPATH
