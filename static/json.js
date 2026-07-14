@@ -10,6 +10,7 @@
   const wrap = root.querySelector('#json-wrap');
   const file = root.querySelector('#json-file');
   const formatButton = root.querySelector('#json-format');
+  const treeButton = root.querySelector('#json-tree');
   const minifyButton = root.querySelector('#json-minify');
   const copyButton = root.querySelector('#json-copy');
   const downloadButton = root.querySelector('#json-download');
@@ -125,6 +126,119 @@
     return `최상위 값 ${typeof value}`;
   };
 
+  const parseTree = (source) => {
+    let index = 0;
+    const skip = () => { while (/\s/.test(source[index] ?? '')) index += 1; };
+    const readString = () => {
+      const start = index;
+      index += 1;
+      let escaped = false;
+      while (index < source.length) {
+        const character = source[index++];
+        if (escaped) escaped = false;
+        else if (character === '\\') escaped = true;
+        else if (character === '"') break;
+      }
+      const raw = source.slice(start, index);
+      return { kind: 'string', raw, display: JSON.parse(raw) };
+    };
+    const readScalar = () => {
+      const start = index;
+      while (index < source.length && !/[\s,}\]]/.test(source[index])) index += 1;
+      const raw = source.slice(start, index);
+      return { kind: raw === 'true' || raw === 'false' ? 'boolean' : raw === 'null' ? 'null' : 'number', raw, display: raw };
+    };
+    const readValue = () => {
+      skip();
+      if (source[index] === '{') {
+        index += 1;
+        const children = [];
+        skip();
+        while (source[index] !== '}') {
+          const key = readString().display;
+          skip(); index += 1;
+          children.push({ key, value: readValue() });
+          skip();
+          if (source[index] === ',') { index += 1; skip(); }
+        }
+        index += 1;
+        return { kind: 'object', children };
+      }
+      if (source[index] === '[') {
+        index += 1;
+        const children = [];
+        skip();
+        while (source[index] !== ']') {
+          children.push({ key: `[${children.length}]`, value: readValue() });
+          skip();
+          if (source[index] === ',') { index += 1; skip(); }
+        }
+        index += 1;
+        return { kind: 'array', children };
+      }
+      return source[index] === '"' ? readString() : readScalar();
+    };
+    return readValue();
+  };
+
+  const renderTreeNode = (node, key, depth = 0) => {
+    if (node.kind !== 'object' && node.kind !== 'array') {
+      const row = document.createElement('div');
+      row.className = 'json-tree-value';
+      const keyElement = document.createElement('span');
+      keyElement.className = 'json-tree-key';
+      keyElement.textContent = key;
+      const value = document.createElement('span');
+      value.className = `json-tree-raw json-${node.kind}`;
+      value.textContent = node.kind === 'string' ? node.display : node.raw;
+      row.append(keyElement, value);
+      return row;
+    }
+    const details = document.createElement('details');
+    details.className = 'json-tree-node';
+    details.open = depth < 2;
+    const summary = document.createElement('summary');
+    const keyElement = document.createElement('span');
+    keyElement.className = 'json-tree-key';
+    keyElement.textContent = key;
+    const type = document.createElement('span');
+    type.className = 'json-tree-type';
+    type.textContent = node.kind === 'array' ? 'ARRAY' : 'OBJECT';
+    const count = document.createElement('span');
+    count.className = 'json-tree-count';
+    count.textContent = `${node.children.length.toLocaleString('ko-KR')}개`;
+    summary.append(keyElement, type, count);
+    const children = document.createElement('div');
+    children.className = 'json-tree-children';
+    node.children.forEach((child) => children.append(renderTreeNode(child.value, child.key, depth + 1)));
+    details.append(summary, children);
+    return details;
+  };
+
+  const renderHuman = () => {
+    try {
+      const source = input.value;
+      const parsed = validate(source);
+      currentResult = reformat(source, false);
+      currentMode = 'tree';
+      modeLabel.textContent = 'HUMAN VIEW';
+      const tree = parseTree(source);
+      const container = document.createElement('div');
+      container.className = 'json-tree-root';
+      container.append(renderTreeNode(tree, tree.kind === 'array' ? 'ROOT ARRAY' : 'ROOT'));
+      output.replaceChildren(container);
+      output.classList.add('is-tree');
+      setActions(true);
+      setStatus(`${rootSummary(parsed)} · 구조 보기에서 객체와 배열을 눌러 펼치거나 접을 수 있습니다.`);
+    } catch (error) {
+      currentResult = '';
+      output.classList.remove('is-tree');
+      output.replaceChildren(Object.assign(document.createElement('code'), { textContent: 'JSON 문법을 확인해 주세요.' }));
+      setActions(false);
+      setStatus(error instanceof Error ? error.message : 'JSON을 처리하지 못했습니다.', true);
+    }
+  };
+
   const render = (compact) => {
     try {
       const source = input.value;
@@ -132,12 +246,14 @@
       currentResult = reformat(source, compact);
       currentMode = compact ? 'compact' : 'pretty';
       modeLabel.textContent = compact ? 'COMPACT' : 'PRETTY';
+      output.classList.remove('is-tree');
       highlight(currentResult);
       setActions(true);
       const bytes = encoder.encode(currentResult).length;
       setStatus(`${rootSummary(parsed)} · ${currentResult.length.toLocaleString('ko-KR')}자 · UTF-8 ${bytes.toLocaleString('ko-KR')} bytes`);
     } catch (error) {
       currentResult = '';
+      output.classList.remove('is-tree');
       output.replaceChildren(Object.assign(document.createElement('code'), { textContent: 'JSON 문법을 확인해 주세요.' }));
       setActions(false);
       setStatus(error instanceof Error ? error.message : 'JSON을 처리하지 못했습니다.', true);
@@ -157,6 +273,7 @@
   };
 
   formatButton.addEventListener('click', () => render(false));
+  treeButton.addEventListener('click', renderHuman);
   minifyButton.addEventListener('click', () => render(true));
   indent.addEventListener('change', () => { if (currentResult && currentMode === 'pretty') render(false); });
   wrap.addEventListener('change', () => output.classList.toggle('is-wrapped', wrap.checked));
@@ -180,6 +297,7 @@
   clearButton.addEventListener('click', () => {
     input.value = '';
     currentResult = '';
+    output.classList.remove('is-tree');
     output.replaceChildren(Object.assign(document.createElement('code'), { textContent: 'JSON을 입력하고 정리 버튼을 눌러 주세요.' }));
     modeLabel.textContent = 'PRETTY';
     setActions(false);

@@ -20,6 +20,18 @@
 .json-output.is-wrapped{white-space:pre-wrap;overflow-wrap:anywhere}
 .json-output code{font:inherit}
 .json-key{color:#d7ff5f}.json-string{color:#9ad9ff}.json-number{color:#ffbd7a}.json-boolean{color:#d5a6ff}.json-null{color:#ff8c78}
+.json-output.is-tree{padding:.65rem;background:var(--surface-2);white-space:normal;font:13px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.json-tree-node{border-left:1px solid var(--line);margin:.15rem 0 .15rem .35rem;padding-left:.65rem}
+.json-tree-node>summary{display:flex;align-items:center;gap:.5rem;min-height:30px;cursor:pointer;list-style:none}
+.json-tree-node>summary::-webkit-details-marker{display:none}
+.json-tree-node>summary::before{content:'+';display:grid;place-items:center;width:16px;height:16px;border:1px solid var(--line);color:var(--acid);font:700 .72rem ui-monospace,SFMono-Regular,Menlo,monospace}
+.json-tree-node[open]>summary::before{content:'−'}
+.json-tree-key{color:var(--acid);font:700 .78rem ui-monospace,SFMono-Regular,Menlo,monospace}
+.json-tree-type,.json-tree-count{color:var(--muted);font:.68rem ui-monospace,SFMono-Regular,Menlo,monospace}
+.json-tree-children{padding:.1rem 0 .25rem}
+.json-tree-value{display:grid;grid-template-columns:minmax(100px,34%) minmax(0,1fr);gap:.6rem;align-items:start;min-height:30px;padding:.3rem .45rem;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+.json-tree-value:last-child{border-bottom:0}
+.json-tree-raw{min-width:0;overflow-wrap:anywhere;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 .json-actions{display:flex;align-items:center;flex-wrap:wrap;gap:.65rem;margin-top:1rem}
 .json-actions .primary{margin:0}
 .json-actions .ghost:disabled{cursor:not-allowed;opacity:.4}

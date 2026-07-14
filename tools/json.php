@@ -41,12 +41,13 @@ $jsonJsVersion = (string) (filemtime(__DIR__ . '/../static/json.js') ?: '1');
         <h2 id="json-output-title">결과</h2>
         <span id="json-mode">PRETTY</span>
       </div>
-      <pre class="json-output is-wrapped" id="json-output" tabindex="0"><code>JSON을 입력하고 정리 버튼을 눌러 주세요.</code></pre>
+      <div class="json-output is-wrapped" id="json-output" tabindex="0"><code>JSON을 입력하고 정리 버튼을 눌러 주세요.</code></div>
     </section>
   </div>
 
   <div class="json-actions">
     <button class="primary" id="json-format" type="button">보기 좋게 정리</button>
+    <button class="ghost" id="json-tree" type="button">사람이 보기</button>
     <button class="ghost" id="json-minify" type="button">한 줄로 압축</button>
     <button class="ghost" id="json-copy" type="button" disabled>결과 복사</button>
     <button class="ghost" id="json-download" type="button" disabled>JSON 다운로드</button>
