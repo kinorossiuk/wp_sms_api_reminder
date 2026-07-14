@@ -6,6 +6,8 @@ const ROSSI_ATTEMPT_WINDOW = 900;
 const ROSSI_BLOCK_SECONDS = 1800;
 const ROSSI_MAX_LOCKOUTS = 3;
 const ROSSI_LOCKOUT_WINDOW = 604800;
+const ROSSI_MAX_PROBES = 2;
+const ROSSI_PROBE_WINDOW = 600;
 const ROSSI_SESSION_SECONDS = 43200;
 
 function rossi_security_dir(): string
@@ -76,15 +78,51 @@ function rossi_record_failure(string $path, int $now): ?array
         $blockedUntil = $permanentlyBlocked ? 0 : $now + ROSSI_BLOCK_SECONDS;
     }
 
-    $state = [
-        'count' => $count,
-        'window_started' => $windowStarted,
-        'blocked_until' => $blockedUntil,
-        'lockout_count' => $lockoutCount,
-        'lockout_window_started' => $lockoutWindowStarted,
-        'permanently_blocked' => $permanentlyBlocked,
-        'updated_at' => $now,
-    ];
+    $state['count'] = $count;
+    $state['window_started'] = $windowStarted;
+    $state['blocked_until'] = $blockedUntil;
+    $state['lockout_count'] = $lockoutCount;
+    $state['lockout_window_started'] = $lockoutWindowStarted;
+    $state['permanently_blocked'] = $permanentlyBlocked;
+    $state['updated_at'] = $now;
+
+    ftruncate($handle, 0);
+    rewind($handle);
+    $written = fwrite($handle, json_encode($state, JSON_UNESCAPED_SLASHES));
+    fflush($handle);
+    flock($handle, LOCK_UN);
+    fclose($handle);
+    @chmod($path, 0600);
+
+    return $written === false ? null : $state;
+}
+
+function rossi_record_probe(string $path, int $now, string $requestTarget): ?array
+{
+    $handle = @fopen($path, 'c+');
+    if ($handle === false || !flock($handle, LOCK_EX)) {
+        if (is_resource($handle)) {
+            fclose($handle);
+        }
+        return null;
+    }
+
+    rewind($handle);
+    $decoded = json_decode((string) stream_get_contents($handle), true);
+    $state = is_array($decoded) ? $decoded : [];
+    $probeWindowStarted = (int) ($state['probe_window_started'] ?? 0);
+    $probeCount = (int) ($state['probe_count'] ?? 0);
+    if ($probeWindowStarted === 0 || $now - $probeWindowStarted > ROSSI_PROBE_WINDOW) {
+        $probeWindowStarted = $now;
+        $probeCount = 0;
+    }
+
+    $probeCount++;
+    $state['probe_count'] = $probeCount;
+    $state['probe_window_started'] = $probeWindowStarted;
+    $state['last_probe'] = substr($requestTarget, 0, 200);
+    $state['permanently_blocked'] = !empty($state['permanently_blocked']) || $probeCount >= ROSSI_MAX_PROBES;
+    $state['updated_at'] = $now;
 
     ftruncate($handle, 0);
     rewind($handle);
