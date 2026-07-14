@@ -199,41 +199,6 @@
     return concat([base.subarray(0, base.length - 12), pngChunk('tEXt', padding), base.subarray(base.length - 12)]);
   };
 
-  const ebmlVint = (value) => {
-    for (let bytes = 1; bytes <= 4; bytes += 1) {
-      if (value <= (2 ** (7 * bytes)) - 2) {
-        const output = new Uint8Array(bytes);
-        let current = value;
-        for (let index = bytes - 1; index >= 0; index -= 1) { output[index] = current & 255; current = Math.floor(current / 256); }
-        output[0] |= 1 << (8 - bytes);
-        return output;
-      }
-    }
-    throw new Error('동영상 패딩 크기가 너무 큽니다.');
-  };
-
-  const webmPadding = (length) => {
-    for (let vintLength = 1; vintLength <= 4; vintLength += 1) {
-      const payloadLength = length - 1 - vintLength;
-      if (payloadLength >= 0 && payloadLength <= (2 ** (7 * vintLength)) - 2) return concat([Uint8Array.of(0xec), ebmlVint(payloadLength), new Uint8Array(payloadLength)]);
-    }
-    throw new Error('동영상 패딩을 만들지 못했습니다.');
-  };
-
-  const ensureOpenWebmSegment = (data) => {
-    for (let index = 0; index <= data.length - 12; index += 1) {
-      if (data[index] !== 0x18 || data[index + 1] !== 0x53 || data[index + 2] !== 0x80 || data[index + 3] !== 0x67) continue;
-      const firstSizeByte = data[index + 4];
-      let sizeLength = 1;
-      while (sizeLength <= 8 && (firstSizeByte & (1 << (8 - sizeLength))) === 0) sizeLength += 1;
-      if (sizeLength !== 8) throw new Error('이 브라우저의 WebM 구조는 정확한 용량 생성에 지원되지 않습니다. Chrome 또는 Edge를 사용해 주세요.');
-      const isUnknownSize = firstSizeByte === 0x01 && data.subarray(index + 5, index + 12).every((value) => value === 0xff);
-      if (!isUnknownSize) throw new Error('이 브라우저의 WebM 구조는 정확한 용량 생성에 지원되지 않습니다. Chrome 또는 Edge를 사용해 주세요.');
-      return data;
-    }
-    throw new Error('생성된 WebM의 영상 구간을 찾지 못했습니다. 다시 시도해 주세요.');
-  };
-
   const makeWebm = async (target) => {
     if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) throw new Error('이 브라우저는 WebM 동영상 생성을 지원하지 않습니다. Chrome 또는 Edge를 사용해 주세요.');
     const canvas = document.createElement('canvas');
@@ -251,7 +216,11 @@
     const stream = canvas.captureStream(12);
     const mimeType = ['video/webm;codecs=vp8', 'video/webm'].find((type) => MediaRecorder.isTypeSupported(type));
     if (!mimeType) throw new Error('이 브라우저에서 지원하는 WebM 코덱을 찾지 못했습니다. Chrome 또는 Edge를 사용해 주세요.');
-    const options = { mimeType, videoBitsPerSecond: 700000 };
+    const durationSeconds = Number(videoDuration.value);
+    const requestedBitrate = Math.ceil((target * 8 * 1.05) / durationSeconds);
+    const maxBitrate = 12_000_000;
+    if (requestedBitrate > maxBitrate) throw new Error(`${durationSeconds}초 영상으로는 이 용량을 모바일 호환 방식으로 만들기 어렵습니다. 영상 길이를 10초로 늘리거나 용량을 낮춰 주세요.`);
+    const options = { mimeType, videoBitsPerSecond: Math.max(250_000, requestedBitrate) };
     const chunks = [];
     const recorder = new MediaRecorder(stream, options);
     const stopped = new Promise((resolve, reject) => { recorder.onstop = resolve; recorder.onerror = () => reject(new Error('WebM 동영상 생성에 실패했습니다.')); });
@@ -265,10 +234,7 @@
     recorder.stop();
     await stopped;
     stream.getTracks().forEach((track) => track.stop());
-    const base = ensureOpenWebmSegment(new Uint8Array(await new Blob(chunks, { type: mimeType }).arrayBuffer()));
-    const remaining = target - base.length;
-    if (remaining < 3) throw new Error(`선택한 용량이 동영상 최소 크기(${formatBytes(base.length + 3)})보다 작습니다.`);
-    return concat([base, webmPadding(remaining)]);
+    return new Uint8Array(await new Blob(chunks, { type: mimeType }).arrayBuffer());
   };
 
   const targetBytes = () => {
@@ -285,7 +251,7 @@
     imageOption.hidden = !isImage;
     videoOption.hidden = !isVideo;
     fileHint.textContent = isVideo
-      ? '선택한 길이만큼 브라우저에서 실제 프레임을 녹화한 WebM입니다. Chrome·Edge에서 가장 안정적입니다.'
+      ? '모바일 호환을 위해 실제 WebM을 녹화합니다. 파일 크기는 목표 용량에 가깝게 생성되며 정확히 일치하지 않을 수 있습니다.'
       : '실제 파일 형식을 만든 뒤, 보이지 않는 패딩을 추가해 목표 바이트에 맞춥니다. 생성 파일은 서버에 저장되지 않습니다.';
   };
 
@@ -312,10 +278,12 @@
       else if (kind === 'docx') data = makeDocx(target);
       else if (kind === 'xlsx') data = makeXlsx(target);
       else data = await makeWebm(target);
-      if (data.length !== target) throw new Error(`목표 용량과 다릅니다 (${data.length.toLocaleString('ko-KR')} bytes).`);
+      if (kind !== 'webm' && data.length !== target) throw new Error(`목표 용량과 다릅니다 (${data.length.toLocaleString('ko-KR')} bytes).`);
       const mime = { png: 'image/png', txt: 'text/plain;charset=utf-8', pdf: 'application/pdf', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', webm: 'video/webm' }[kind];
       download(new Blob([data], { type: mime }), `${safeName(fileName.value, 'test-file')}.${kind}`);
-      setStatus(fileStatus, `${kind.toUpperCase()} 파일 ${formatBytes(data.length)}을 만들었습니다.`);
+      setStatus(fileStatus, kind === 'webm'
+        ? `WebM 영상 ${formatBytes(data.length)}을 만들었습니다. 목표: ${formatBytes(target)}`
+        : `${kind.toUpperCase()} 파일 ${formatBytes(data.length)}을 만들었습니다.`);
       button.disabled = false;
     } catch (error) {
       setStatus(fileStatus, error instanceof Error ? error.message : '파일을 생성하지 못했습니다.', true);
