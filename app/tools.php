@@ -30,4 +30,11 @@ return [
         'path' => '/tools/json/',
         'status' => '사용 가능',
     ],
+    'temporary-note' => [
+        'name' => '임시 메모',
+        'description' => '현재 브라우저에만 저장하고 매일 자정에 자동 삭제하는 짧은 메모입니다.',
+        'category' => '개인',
+        'path' => '/tools/temporary-note/',
+        'status' => '로컬 저장',
+    ],
 ];
