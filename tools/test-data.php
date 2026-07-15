@@ -8,7 +8,7 @@ $testDataJsVersion = (string) (filemtime(__DIR__ . '/../static/test-data.js') ?:
 <link rel="stylesheet" href="/static/test-data.css?v=<?= htmlspecialchars($testDataCssVersion, ENT_QUOTES, 'UTF-8') ?>">
 <section class="tool-view test-data-view" aria-labelledby="tool-title" data-test-data-tool>
   <a class="back-link" href="/">← 모든 도구</a>
-  <div class="tool-view-icon" aria-hidden="true">▣</div>
+  <div class="tool-view-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M6 3h14l6 6v20H6V3Zm12 2.8V11h5.2L18 5.8ZM10 15h12v2H10v-2Zm0 5h12v2H10v-2Zm0 5h8v2h-8v-2Z"/></svg></div>
   <p class="kicker">LOCAL / TEST DATA</p>
   <h1 id="tool-title">테스트 데이터<br>생성기</h1>
   <p class="tool-intro">파일과 데이터는 브라우저에서만 만들고 바로 내려받습니다. 서버에 저장하거나 전송하지 않습니다.</p>
