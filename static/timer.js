@@ -4,6 +4,7 @@
   if (!root) return;
   const stateKey = 'rossi-tools-timer-state-v1';
   const soundKey = 'rossi-tools-timer-sound-v1';
+  const hours = root.querySelector('#timer-hours');
   const minutes = root.querySelector('#timer-minutes');
   const seconds = root.querySelector('#timer-seconds');
   const remaining = root.querySelector('#timer-remaining');
@@ -39,8 +40,13 @@
       };
     } catch { return state; }
   };
-  const inputMilliseconds = () => (Math.max(0, Number(minutes.value) || 0) * 60 + Math.max(0, Number(seconds.value) || 0)) * 1000;
-  const setInputs = (milliseconds) => { const total = Math.max(0, Math.floor(milliseconds / 1000)); minutes.value = String(Math.floor(total / 60)); seconds.value = String(total % 60); };
+  const inputMilliseconds = () => (Math.max(0, Number(hours.value) || 0) * 3600 + Math.max(0, Number(minutes.value) || 0) * 60 + Math.max(0, Number(seconds.value) || 0)) * 1000;
+  const setInputs = (milliseconds) => {
+    const total = Math.max(0, Math.floor(milliseconds / 1000));
+    hours.value = String(Math.floor(total / 3600));
+    minutes.value = String(Math.floor((total % 3600) / 60));
+    seconds.value = String(total % 60);
+  };
   const updateNotification = () => {
     if (!('Notification' in window)) { notificationButton.disabled = true; notificationCopy.textContent = '이 브라우저는 OS 알림을 지원하지 않습니다.'; return; }
     if (Notification.permission === 'granted') { notificationButton.disabled = true; notificationButton.textContent = '알림 허용됨'; notificationCopy.textContent = '타이머 종료 시 OS 알림을 표시합니다.'; }

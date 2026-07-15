@@ -19,7 +19,7 @@ $timerJsVersion = (string) (filemtime(__DIR__ . '/../static/timer.js') ?: '1');
   </section>
 
   <div class="timer-controls">
-    <div class="timer-duration"><label>분 <input id="timer-minutes" type="number" min="0" max="999" inputmode="numeric" value="5"></label><label>초 <input id="timer-seconds" type="number" min="0" max="59" inputmode="numeric" value="0"></label></div>
+    <div class="timer-duration"><label>시간 <input id="timer-hours" type="number" min="0" max="99" inputmode="numeric" value="0"></label><label>분 <input id="timer-minutes" type="number" min="0" max="59" inputmode="numeric" value="5"></label><label>초 <input id="timer-seconds" type="number" min="0" max="59" inputmode="numeric" value="0"></label></div>
     <div class="timer-presets" aria-label="빠른 시간 설정"><button class="ghost" type="button" data-timer-preset="60">1분</button><button class="ghost" type="button" data-timer-preset="300">5분</button><button class="ghost" type="button" data-timer-preset="600">10분</button><button class="ghost" type="button" data-timer-preset="1500">25분</button></div>
     <div class="timer-actions"><button class="primary" id="timer-start" type="button">시작</button><button class="ghost" id="timer-pause" type="button" disabled>일시정지</button><button class="ghost" id="timer-reset" type="button" disabled>초기화</button></div>
   </div>
