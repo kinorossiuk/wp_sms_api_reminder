@@ -176,10 +176,21 @@ function rossi_auth_gate(): array
         return ['status' => 'setup', 'nonce' => $nonce];
     }
 
+    $sessionDir = $securityDir . '/sessions';
+    if (!is_dir($sessionDir) && !@mkdir($sessionDir, 0700, true) && !is_dir($sessionDir)) {
+        http_response_code(503);
+        return ['status' => 'storage-error', 'nonce' => $nonce];
+    }
+    @chmod($sessionDir, 0700);
+    if (ini_set('session.save_path', $sessionDir) === false || ini_set('session.gc_maxlifetime', (string) ROSSI_SESSION_SECONDS) === false) {
+        http_response_code(503);
+        return ['status' => 'storage-error', 'nonce' => $nonce];
+    }
+
     $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
     session_name('ROSSITOOLSSESSID');
     session_set_cookie_params([
-        'lifetime' => 0,
+        'lifetime' => ROSSI_SESSION_SECONDS,
         'path' => '/',
         'secure' => $secure,
         'httponly' => true,
