@@ -398,10 +398,10 @@
     return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second} KST`;
   };
 
-  const mp4RecorderMimeType = () => {
-    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream || !window.AudioContext) return '';
+  const mp4RecorderMimeTypes = () => {
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream || !window.AudioContext) return [];
     return ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4']
-      .find((type) => MediaRecorder.isTypeSupported(type)) || '';
+      .filter((type) => MediaRecorder.isTypeSupported(type));
   };
 
   const fillSoundBuffer = (channel, sampleRate, patternIndex) => {
@@ -487,14 +487,22 @@
   };
 
   const makeMp4 = async (target, patternIndex, title) => {
-    const mimeType = mp4RecorderMimeType();
-    if (mimeType) {
-      try {
-        const recorded = await recordMp4(target, patternIndex, title, mimeType);
-        return { blob: paddedMp4(recorded, target), durationSeconds: 6, patternName: mp4SoundPatterns[patternIndex], title, dynamicTitle: true };
-      } catch (error) {
-        console.warn('Dynamic MP4 recording failed; using the compatible template.', error);
+    const mimeTypes = mp4RecorderMimeTypes();
+    if (mimeTypes.length) {
+      let lastError;
+      // Some browsers advertise more than one MP4 codec profile but only record
+      // reliably with one of them. Retry every supported profile once so changing
+      // the requested size cannot silently switch back to a static template.
+      for (const mimeType of [...mimeTypes, ...mimeTypes]) {
+        try {
+          const recorded = await recordMp4(target, patternIndex, title, mimeType);
+          return { blob: paddedMp4(recorded, target), durationSeconds: 6, patternName: mp4SoundPatterns[patternIndex], title, dynamicTitle: true };
+        } catch (error) {
+          lastError = error;
+          await new Promise((resolve) => window.setTimeout(resolve, 150));
+        }
       }
+      throw new Error(`동적 MP4 녹화에 실패했습니다. 브라우저를 새로고침한 뒤 다시 시도해 주세요.${lastError instanceof Error ? ` (${lastError.message})` : ''}`);
     }
     const response = await fetch(`/static/test-video-${patternIndex + 1}.mp4?v=1`, { cache: 'no-cache' });
     if (!response.ok) throw new Error('MP4 원본 영상을 불러오지 못했습니다. 다시 시도해 주세요.');
