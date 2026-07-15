@@ -9,6 +9,7 @@
 .test-panel{margin-top:1rem}
 .test-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin:0;padding:1.4rem;border:1px solid var(--line);background:var(--surface)}
 .test-form label{display:grid;gap:.55rem;color:var(--muted);font-size:.8rem}
+.test-form label span{font-size:.72rem;line-height:1.5}
 .test-form label[hidden]{display:none!important}
 .test-form input,.test-form select,.test-form textarea{width:100%;border:1px solid var(--line);border-radius:0;background:#0c0e0c;color:var(--text);padding:.85rem;outline:0;font:inherit}
 .test-form input:focus,.test-form select:focus,.test-form textarea:focus{border-color:var(--acid);box-shadow:inset 0 0 0 1px var(--acid)}

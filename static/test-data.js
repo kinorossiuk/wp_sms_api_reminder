@@ -25,7 +25,9 @@
   const messageStatus = root.querySelector('#message-status');
   const contactForm = root.querySelector('#test-contact-form');
   const contactCount = root.querySelector('#contact-count');
+  const contactCountry = root.querySelector('#contact-country');
   const contactPrefix = root.querySelector('#contact-prefix');
+  const contactPrefixHint = root.querySelector('#contact-prefix-hint');
   const contactPreview = root.querySelector('#contact-preview');
   const contactCsv = root.querySelector('#contact-csv');
   const contactStatus = root.querySelector('#contact-status');
@@ -131,8 +133,16 @@
   };
 
   const patternQueues = new Map();
-  const nextPatternIndex = (kind, length) => {
-    const state = patternQueues.get(kind) || { queue: [], last: -1 };
+  const nextPatternIndex = (kind, fileName, length) => {
+    const stateKey = `rossi-test-data-patterns-v1:${kind}:${fileName}`;
+    let state = patternQueues.get(stateKey);
+    if (!state) {
+      try {
+        const saved = JSON.parse(window.localStorage.getItem(stateKey) || 'null');
+        if (saved && Array.isArray(saved.queue) && saved.queue.every((value) => Number.isInteger(value) && value >= 0 && value < length) && new Set(saved.queue).size === saved.queue.length && Number.isInteger(saved.last)) state = saved;
+      } catch (_) { /* Storage can be unavailable in private or restricted browsing contexts. */ }
+    }
+    state ||= { queue: [], last: -1 };
     if (state.queue.length === 0) {
       state.queue = Array.from({ length }, (_, index) => index);
       for (let index = state.queue.length - 1; index > 0; index -= 1) {
@@ -143,7 +153,8 @@
     }
     const selected = state.queue.shift();
     state.last = selected;
-    patternQueues.set(kind, state);
+    patternQueues.set(stateKey, state);
+    try { window.localStorage.setItem(stateKey, JSON.stringify(state)); } catch (_) { /* Keep the current-page queue when storage is unavailable. */ }
     return selected;
   };
 
@@ -508,7 +519,7 @@
       ? '지원 브라우저에서는 생성 날짜·시간(KST)을 화면 제목으로 직접 녹화하고, 10가지 테스트 사운드 중 하나를 무작위로 넣습니다.'
       : isVideo
       ? '모바일 호환을 위해 실제 WebM을 녹화합니다. 목표 용량에 맞춰 영상 길이를 자동으로 정합니다. 실제 파일 크기는 목표에 가깝게 생성됩니다.'
-      : 'PNG, TXT, PDF, DOCX, XLSX는 생성 날짜·시간(KST)을 제목으로 넣고, 중복 없는 10가지 테스트 패턴으로 만듭니다.';
+      : 'PNG, TXT, PDF, DOCX, XLSX는 생성 날짜·시간(KST)을 제목으로 넣고, 파일명별로 중복 없는 10가지 테스트 패턴으로 만듭니다.';
   };
 
   tabs.forEach((tab) => tab.addEventListener('click', () => {
@@ -536,7 +547,8 @@
       let generatedPatternName;
       let generatedVideoTitle;
       let hasDynamicVideoTitle = false;
-      const patternIndex = nextPatternIndex(kind, documentPatterns.length);
+      const patternFileName = safeName(fileName.value, 'test-file').toLowerCase();
+      const patternIndex = nextPatternIndex(kind, patternFileName, documentPatterns.length);
       const pattern = documentPatterns[patternIndex];
       const generatedTitle = generatedKstTitle();
       if (kind === 'png') { data = await makePng(target, pattern, patternIndex, generatedTitle); generatedPatternName = pattern.name; }
@@ -565,7 +577,7 @@
         ? `WebM 영상 ${formatBytes(data.size)}을 만들었습니다. 자동 지정 길이: ${formatDuration(videoDurationSeconds)} · 목표: ${formatBytes(target)}`
         : kind === 'mp4'
           ? `H.264/AAC MP4 영상 ${formatBytes(data.size)}을 만들었습니다. 사운드: ${generatedPatternName} · ${hasDynamicVideoTitle ? `화면 제목: ${generatedVideoTitle}` : '이 브라우저는 동적 MP4 제목을 지원하지 않아 기본 영상을 사용했습니다.'} · 길이: ${formatDuration(videoDurationSeconds)}`
-        : `${kind.toUpperCase()} 파일 ${formatBytes(data.length)}을 만들었습니다. 생성 제목: ${generatedTitle} · 패턴: ${generatedPatternName} (중복 없는 랜덤 10종)`);
+        : `${kind.toUpperCase()} 파일 ${formatBytes(data.length)}을 만들었습니다. 생성 제목: ${generatedTitle} · 패턴: ${generatedPatternName} (파일명별 중복 없는 랜덤 10종)`);
       button.disabled = false;
     } catch (error) {
       setStatus(fileStatus, error instanceof Error ? error.message : '파일을 생성하지 못했습니다.', true);
@@ -599,19 +611,100 @@
     catch (_) { messageOutput.select(); document.execCommand('copy'); setStatus(messageStatus, '클립보드에 복사했습니다.'); }
   });
 
-  const firstNames = ['민준', '서연', '도윤', '지우', '하준', '서윤', '시우', '지민', '예준', '수아', '건우', '유진'];
-  const lastNames = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임'];
+  const contactCountries = {
+    KR: { label: '대한민국', callingCode: '82', defaultPrefix: '010', prefixPattern: /^010$/, prefixHint: '대한민국 휴대전화 형식: 010', nationalPattern: /^010\d{8}$/, names: ['김민준', '이서연', '박도윤', '최지우', '정하준', '강서윤'] },
+    US: { label: '미국', callingCode: '1', defaultPrefix: '202', prefixPattern: /^[2-9]\d{2}$/, prefixHint: '미국 지역번호: 2~9로 시작하는 숫자 3자리 (예: 202)', nationalPattern: /^[2-9]\d{2}555\d{4}$/, names: ['Alex Morgan', 'Jordan Lee', 'Taylor Smith', 'Casey Brown', 'Riley Davis', 'Jamie Wilson'] },
+    CA: { label: '캐나다', callingCode: '1', defaultPrefix: '416', prefixPattern: /^[2-9]\d{2}$/, prefixHint: '캐나다 지역번호: 2~9로 시작하는 숫자 3자리 (예: 416)', nationalPattern: /^[2-9]\d{2}555\d{4}$/, names: ['Avery Martin', 'Quinn Roy', 'Morgan Clark', 'Cameron Lewis', 'Rowan Scott', 'Parker Young'] },
+    GB: { label: '영국', callingCode: '44', defaultPrefix: '07700', prefixPattern: /^07\d{3}$/, prefixHint: '영국 모바일 시작값: 07로 시작하는 숫자 5자리 (예: 07700)', nationalPattern: /^07\d{9}$/, names: ['Oliver Taylor', 'Amelia Jones', 'George Evans', 'Isla Thomas', 'Harry Walker', 'Mia Harris'] },
+    JP: { label: '일본', callingCode: '81', defaultPrefix: '070', prefixPattern: /^0[789]0$/, prefixHint: '일본 모바일 시작값: 070, 080 또는 090', nationalPattern: /^0[789]0\d{8}$/, names: ['佐藤 太郎', '鈴木 花子', '高橋 翔', '田中 美咲', '伊藤 蓮', '渡辺 葵'] },
+    AU: { label: '호주', callingCode: '61', defaultPrefix: '04', prefixPattern: /^04$/, prefixHint: '호주 모바일 시작값: 04', nationalPattern: /^04\d{8}$/, names: ['Noah Williams', 'Charlotte Brown', 'Jack Wilson', 'Olivia Taylor', 'Leo Anderson', 'Grace Thompson'] },
+    SG: { label: '싱가포르', callingCode: '65', defaultPrefix: '8', prefixPattern: /^[89]$/, prefixHint: '싱가포르 모바일 시작값: 8 또는 9', nationalPattern: /^[89]\d{7}$/, names: ['Tan Wei Ming', 'Lim Jia Yi', 'Lee Jun Hao', 'Ng Hui Min', 'Ong Kai Wen', 'Goh Xin Yi'] },
+    DE: { label: '독일', callingCode: '49', defaultPrefix: '0151', prefixPattern: /^01[567]\d$/, prefixHint: '독일 모바일 시작값: 015x, 016x 또는 017x', nationalPattern: /^01[567]\d{8}$/, names: ['Lukas Müller', 'Anna Schmidt', 'Jonas Fischer', 'Emma Weber', 'Leon Wagner', 'Mia Becker'] },
+    FR: { label: '프랑스', callingCode: '33', defaultPrefix: '06', prefixPattern: /^0[67]$/, prefixHint: '프랑스 모바일 시작값: 06 또는 07', nationalPattern: /^0[67]\d{8}$/, names: ['Lucas Martin', 'Emma Bernard', 'Hugo Dubois', 'Léa Thomas', 'Louis Robert', 'Chloé Richard'] },
+    IN: { label: '인도', callingCode: '91', defaultPrefix: '9', prefixPattern: /^[6-9]$/, prefixHint: '인도 모바일 시작값: 6, 7, 8 또는 9', nationalPattern: /^[6-9]\d{9}$/, names: ['Aarav Sharma', 'Ananya Patel', 'Vivaan Singh', 'Diya Gupta', 'Arjun Kumar', 'Isha Mehta'] },
+  };
+
+  const serialDigits = (base, index, length) => String(base + index).padStart(length, '0').slice(-length);
+  const buildCountryPhone = (countryCode, config, prefix, index) => {
+    let nationalDigits;
+    let phone;
+    if (countryCode === 'KR' || countryCode === 'JP') {
+      const serial = serialDigits(10_000_000, index, 8);
+      nationalDigits = `${prefix}${serial}`;
+      phone = `${prefix}-${serial.slice(0, 4)}-${serial.slice(4)}`;
+    } else if (countryCode === 'US' || countryCode === 'CA') {
+      const serial = serialDigits(1000, index, 4);
+      nationalDigits = `${prefix}555${serial}`;
+      phone = `(${prefix}) 555-${serial}`;
+    } else if (countryCode === 'GB') {
+      const serial = serialDigits(900_000, index, 6);
+      nationalDigits = `${prefix}${serial}`;
+      phone = `${prefix} ${serial.slice(0, 3)} ${serial.slice(3)}`;
+    } else if (countryCode === 'AU') {
+      const serial = serialDigits(91_570_000, index, 8);
+      nationalDigits = `${prefix}${serial}`;
+      phone = `${nationalDigits.slice(0, 4)} ${nationalDigits.slice(4, 7)} ${nationalDigits.slice(7)}`;
+    } else if (countryCode === 'SG') {
+      const serial = serialDigits(1_000_000, index, 7);
+      nationalDigits = `${prefix}${serial}`;
+      phone = `${nationalDigits.slice(0, 4)} ${nationalDigits.slice(4)}`;
+    } else if (countryCode === 'DE') {
+      const serial = serialDigits(1_000_000, index, 7);
+      nationalDigits = `${prefix}${serial}`;
+      phone = `${prefix} ${serial}`;
+    } else if (countryCode === 'FR') {
+      const serial = serialDigits(10_000_000, index, 8);
+      nationalDigits = `${prefix}${serial}`;
+      phone = nationalDigits.match(/.{1,2}/g).join(' ');
+    } else {
+      const serial = serialDigits(100_000_000, index, 9);
+      nationalDigits = `${prefix}${serial}`;
+      phone = `${nationalDigits.slice(0, 5)} ${nationalDigits.slice(5)}`;
+    }
+    if (!config.nationalPattern.test(nationalDigits)) throw new Error(`${config.label} 전화번호 형식을 만들지 못했습니다.`);
+    const e164 = `+${config.callingCode}${nationalDigits.startsWith('0') ? nationalDigits.slice(1) : nationalDigits}`;
+    if (!/^\+[1-9]\d{7,14}$/.test(e164)) throw new Error('E.164 국제번호 형식을 만들지 못했습니다.');
+    return { phone, e164 };
+  };
+
+  const selectedContactCountry = () => contactCountries[contactCountry.value] || contactCountries.KR;
+  const validateContactPrefix = () => {
+    const config = selectedContactCountry();
+    const prefix = contactPrefix.value.trim();
+    contactPrefix.setCustomValidity(config.prefixPattern.test(prefix) ? '' : config.prefixHint);
+    return { config, prefix };
+  };
+
+  const updateContactCountry = () => {
+    const config = selectedContactCountry();
+    contactPrefix.value = config.defaultPrefix;
+    contactPrefix.maxLength = Math.max(5, config.defaultPrefix.length);
+    contactPrefix.placeholder = config.defaultPrefix;
+    contactPrefixHint.textContent = config.prefixHint;
+    validateContactPrefix();
+    contactCsv.disabled = true;
+    contacts = [];
+    contactPreview.replaceChildren();
+    setStatus(contactStatus, `${config.label} (+${config.callingCode}) 형식으로 국내 번호와 E.164 국제번호를 생성합니다.`);
+  };
+
   const makeContacts = () => {
     const count = Number(contactCount.value);
-    const prefix = contactPrefix.value.replace(/\D/g, '').slice(0, 3);
+    const countryCode = contactCountry.value;
+    const { config, prefix } = validateContactPrefix();
     if (!Number.isInteger(count) || count < 1 || count > 1000) throw new Error('연락처 수는 1~1,000개로 입력해 주세요.');
-    if (prefix.length !== 3) throw new Error('전화번호 시작값은 세 자리 숫자로 입력해 주세요.');
-    return Array.from({ length: count }, (_, index) => ({
-      name: `${lastNames[index % lastNames.length]}${firstNames[index % firstNames.length]}`,
-      phone: `${prefix}-${String(1000 + Math.floor(index / 10000)).padStart(4, '0')}-${String(index % 10000).padStart(4, '0')}`,
-      email: `test.contact.${String(index + 1).padStart(4, '0')}@example.test`,
-      company: `테스트 컴퍼니 ${(index % 12) + 1}`,
-    }));
+    if (!config.prefixPattern.test(prefix)) throw new Error(config.prefixHint);
+    return Array.from({ length: count }, (_, index) => {
+      const number = buildCountryPhone(countryCode, config, prefix, index);
+      return {
+        country: `${config.label} (+${config.callingCode})`,
+        name: config.names[index % config.names.length],
+        phone: number.phone,
+        e164: number.e164,
+        email: `test.${countryCode.toLowerCase()}.${String(index + 1).padStart(4, '0')}@example.test`,
+        company: `Test Company ${countryCode}-${(index % 12) + 1}`,
+      };
+    });
   };
 
   const showContacts = (items) => {
@@ -619,22 +712,25 @@
     const table = document.createElement('table');
     const head = document.createElement('thead');
     const row = document.createElement('tr');
-    ['이름', '전화번호', '이메일', '회사'].forEach((label) => { const cell = document.createElement('th'); cell.textContent = label; row.append(cell); });
+    ['국가', '이름', '국내 형식', 'E.164 국제번호', '이메일', '회사'].forEach((label) => { const cell = document.createElement('th'); cell.textContent = label; row.append(cell); });
     head.append(row); table.append(head);
     const body = document.createElement('tbody');
-    items.slice(0, 50).forEach((item) => { const itemRow = document.createElement('tr'); [item.name, item.phone, item.email, item.company].forEach((value) => { const cell = document.createElement('td'); cell.textContent = value; itemRow.append(cell); }); body.append(itemRow); });
+    items.slice(0, 50).forEach((item) => { const itemRow = document.createElement('tr'); [item.country, item.name, item.phone, item.e164, item.email, item.company].forEach((value) => { const cell = document.createElement('td'); cell.textContent = value; itemRow.append(cell); }); body.append(itemRow); });
     table.append(body); contactPreview.append(table);
   };
 
+  contactCountry.addEventListener('change', updateContactCountry);
+  contactPrefix.addEventListener('input', validateContactPrefix);
+  updateContactCountry();
   contactForm.addEventListener('submit', (event) => {
     event.preventDefault();
-    try { contacts = makeContacts(); showContacts(contacts); contactCsv.disabled = false; setStatus(contactStatus, `${contacts.length.toLocaleString('ko-KR')}개의 가상 연락처를 만들었습니다. 미리보기는 최대 50개만 표시합니다.`); }
+    try { contacts = makeContacts(); showContacts(contacts); contactCsv.disabled = false; setStatus(contactStatus, `${selectedContactCountry().label} 형식의 가상 연락처 ${contacts.length.toLocaleString('ko-KR')}개를 만들었습니다. 국내 형식과 E.164 번호를 검증했으며, 미리보기는 최대 50개입니다.`); }
     catch (error) { setStatus(contactStatus, error instanceof Error ? error.message : '연락처를 만들지 못했습니다.', true); }
   });
   contactCsv.addEventListener('click', () => {
     if (contacts.length === 0) return;
     const quote = (value) => `"${value.replace(/"/g, '""')}"`;
-    const rows = [['이름', '전화번호', '이메일', '회사'], ...contacts.map((item) => [item.name, item.phone, item.email, item.company])];
+    const rows = [['국가', '이름', '국내 형식', 'E.164 국제번호', '이메일', '회사'], ...contacts.map((item) => [item.country, item.name, item.phone, item.e164, item.email, item.company])];
     download(new Blob(['\uFEFF', rows.map((row) => row.map(quote).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }), 'rossi-dummy-contacts.csv');
     setStatus(contactStatus, 'CSV 파일을 내려받았습니다.');
   });

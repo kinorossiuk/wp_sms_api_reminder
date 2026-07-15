@@ -64,11 +64,16 @@ $testDataJsVersion = (string) (filemtime(__DIR__ . '/../static/test-data.js') ?:
   <section class="test-panel" id="contact-panel" role="tabpanel" aria-labelledby="contact-tab" data-panel="contact" hidden>
     <form class="test-form" id="test-contact-form">
       <label>생성 개수 <input id="contact-count" type="number" min="1" max="1000" value="10" required inputmode="numeric"></label>
-      <label>전화번호 시작값 <input id="contact-prefix" value="010" maxlength="3" inputmode="numeric"></label>
+      <label>국가
+        <select id="contact-country">
+          <option value="KR">대한민국 (+82)</option><option value="US">미국 (+1)</option><option value="CA">캐나다 (+1)</option><option value="GB">영국 (+44)</option><option value="JP">일본 (+81)</option><option value="AU">호주 (+61)</option><option value="SG">싱가포르 (+65)</option><option value="DE">독일 (+49)</option><option value="FR">프랑스 (+33)</option><option value="IN">인도 (+91)</option>
+        </select>
+      </label>
+      <label>전화번호 시작값 <input id="contact-prefix" value="010" maxlength="5" required inputmode="numeric" autocomplete="off"><span id="contact-prefix-hint">대한민국 휴대전화 형식: 010</span></label>
       <label class="wide-field">미리보기</label>
       <div class="contact-preview wide-field" id="contact-preview" aria-live="polite"></div>
       <div class="test-actions"><button class="primary" type="submit">연락처 만들기</button><button class="ghost" id="contact-csv" type="button" disabled>CSV 다운로드</button></div>
-      <p class="test-status" id="contact-status" role="status" aria-live="polite">가상의 이름·전화번호·이메일만 생성합니다. 실제 인물 정보는 사용하지 않습니다.</p>
+      <p class="test-status" id="contact-status" role="status" aria-live="polite">국가별 국내 형식과 E.164 국제번호를 함께 생성합니다. 실제 발송에는 사용하지 마세요.</p>
     </form>
   </section>
 </section>
