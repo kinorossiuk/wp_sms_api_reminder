@@ -85,7 +85,7 @@ $smsCssVersion = (string) (filemtime(__DIR__ . '/../static/sms.css') ?: '1');
 <script defer src="/static/sms.js"></script>
 <section class="tool-view sms-view">
   <a class="back-link" href="/">← 대시보드로</a>
-  <div class="tool-view-icon" aria-hidden="true">✉</div>
+  <div class="tool-view-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M3 6h26v20H3V6Zm3 3.3V23h20V9.3L16 17 6 9.3ZM7.5 9h17L16 15.5 7.5 9Z"/></svg></div>
   <p class="kicker">SOLAPI / PRIVATE REMINDER</p>
   <h1>SMS<br>예약 발송</h1>
   <p class="tool-intro">개인 알림용 예약 문자입니다. 등록한 발신번호와 허용 수신번호로만 발송하며, 예약 발송 자체는 SOLAPI가 처리합니다.</p>
