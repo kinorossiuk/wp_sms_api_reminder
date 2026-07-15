@@ -89,6 +89,7 @@
     }
     try {
       const value = normaliseValue();
+      window.qrcode.stringToBytes = window.qrcode.stringToBytesFuncs['UTF-8'];
       const qr = window.qrcode(0, level.value);
       qr.addData(value, 'Byte');
       qr.make();
