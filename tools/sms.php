@@ -20,7 +20,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = [];
         } elseif ($action === 'sms-schedule') {
             $readyConfig = rossi_sms_config();
-            rossi_sms_schedule($readyConfig, (string) ($_POST['recipient'] ?? ''), (string) ($_POST['message'] ?? ''), (string) ($_POST['scheduled_at'] ?? ''));
+            $scheduleDate = trim((string) ($_POST['schedule_date'] ?? ''));
+            $scheduleTime = trim((string) ($_POST['schedule_time'] ?? ''));
+            $scheduledAt = $scheduleDate !== '' && $scheduleTime !== ''
+                ? $scheduleDate . 'T' . $scheduleTime
+                : trim((string) ($_POST['scheduled_at'] ?? ''));
+            rossi_sms_schedule($readyConfig, (string) ($_POST['recipient'] ?? ''), (string) ($_POST['message'] ?? ''), $scheduledAt);
             $smsNotice = 'SOLAPI 예약이 접수되었습니다.';
             $_POST = [];
         } elseif ($action === 'sms-send-now') {
@@ -77,12 +82,28 @@ $hasDbPort = (int) ($db['port'] ?? 0) > 0;
 $hasDbName = trim((string) ($db['name'] ?? '')) !== '';
 $hasDbUser = trim((string) ($db['user'] ?? '')) !== '';
 $allowed = is_array($limits['allowed_recipients'] ?? null) ? implode(', ', $limits['allowed_recipients']) : '';
-$nowMin = (new DateTimeImmutable('now', new DateTimeZone(ROSSI_SMS_TIMEZONE)))->modify('+1 minute')->format('Y-m-d\\TH:i:s');
+$scheduleNow = new DateTimeImmutable('now', new DateTimeZone(ROSSI_SMS_TIMEZONE));
+$nowMin = $scheduleNow->modify('+1 minute')->format('Y-m-d\\TH:i');
+$defaultScheduledAt = $scheduleNow->modify('+10 minutes');
+$roundUpMinutes = (5 - ((int) $defaultScheduledAt->format('i') % 5)) % 5;
+$defaultScheduledAt = $defaultScheduledAt->modify('+' . $roundUpMinutes . ' minutes');
+$defaultScheduledAt = $defaultScheduledAt->setTime((int) $defaultScheduledAt->format('H'), (int) $defaultScheduledAt->format('i'), 0);
+$postedScheduleDate = trim((string) ($_POST['schedule_date'] ?? ''));
+$postedScheduleTime = trim((string) ($_POST['schedule_time'] ?? ''));
+$scheduledValue = $postedScheduleDate !== '' && $postedScheduleTime !== ''
+    ? $postedScheduleDate . 'T' . $postedScheduleTime
+    : (string) ($_POST['scheduled_at'] ?? '');
+if ($scheduledValue === '') {
+    $scheduledValue = $defaultScheduledAt->format('Y-m-d\\TH:i');
+}
+$scheduledDate = substr($scheduledValue, 0, 10);
+$scheduledTime = substr($scheduledValue, 11, 5);
 function rossi_sms_status_label(string $status): string { return match ($status) { 'SCHEDULED' => '예약됨', 'SENDING' => '발송 중', 'COMPLETE' => '완료', 'CANCELLED' => '취소됨', 'FAILED', 'PARTIAL_FAILED' => '실패', 'UNKNOWN' => '확인 필요', default => $status }; }
 $smsCssVersion = (string) (filemtime(__DIR__ . '/../static/sms.css') ?: '1');
+$smsJsVersion = (string) (filemtime(__DIR__ . '/../static/sms.js') ?: '1');
 ?>
 <link rel="stylesheet" href="/static/sms.css?v=<?= htmlspecialchars($smsCssVersion, ENT_QUOTES, 'UTF-8') ?>">
-<script defer src="/static/sms.js"></script>
+<script defer src="/static/sms.js?v=<?= htmlspecialchars($smsJsVersion, ENT_QUOTES, 'UTF-8') ?>"></script>
 <section class="tool-view sms-view">
   <a class="back-link" href="/">← 대시보드로</a>
   <div class="tool-view-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M3 6h26v20H3V6Zm3 3.3V23h20V9.3L16 17 6 9.3ZM7.5 9h17L16 15.5 7.5 9Z"/></svg></div>
@@ -99,10 +120,17 @@ $smsCssVersion = (string) (filemtime(__DIR__ . '/../static/sms.css') ?: '1');
       <div><span>SMS 단가 / 예상 건수</span><strong><?= number_format((float) $accountSummary['sms_price']) ?>원 · <?= number_format((int) $accountSummary['sms_count']) ?>건</strong><small>현금·예치금 기준의 예상치</small></div>
       <div><span>LMS 단가 / 예상 건수</span><strong><?= number_format((float) $accountSummary['lms_price']) ?>원 · <?= number_format((int) $accountSummary['lms_count']) ?>건</strong><small>실제 과금은 SOLAPI 최종 처리 기준</small></div>
     </section><?php endif; ?>
-    <form class="sms-form" method="post">
+    <form class="sms-form" method="post" data-sms-schedule-form>
       <input type="hidden" name="csrf" value="<?= e((string) $auth['csrf']) ?>">
       <label>수신번호 <input name="recipient" required inputmode="tel" placeholder="01012345678" value="<?= e((string) ($_POST['recipient'] ?? '')) ?>"></label>
-      <label>예약 시각 (KST) <input name="scheduled_at" type="datetime-local" step="1" min="<?= e($nowMin) ?>" required value="<?= e((string) ($_POST['scheduled_at'] ?? '')) ?>"></label>
+      <fieldset class="sms-schedule" aria-describedby="schedule-help">
+        <legend>예약 시각 (KST)</legend>
+        <input type="hidden" name="scheduled_at" value="<?= e($scheduledValue) ?>" data-schedule-value>
+        <div class="sms-schedule-inputs"><label>날짜 <input type="date" name="schedule_date" min="<?= e(substr($nowMin, 0, 10)) ?>" required value="<?= e($scheduledDate) ?>" data-schedule-date></label><label>시간 <input type="time" name="schedule_time" step="60" required value="<?= e($scheduledTime) ?>" data-schedule-time></label></div>
+        <div class="sms-schedule-shortcuts" aria-label="날짜 빠른 선택"><button type="button" class="ghost" data-schedule-day="today">오늘</button><button type="button" class="ghost" data-schedule-day="tomorrow">내일</button></div>
+        <div class="sms-schedule-shortcuts" aria-label="시간 빠른 선택"><button type="button" class="ghost" data-schedule-offset="10">10분 후</button><button type="button" class="ghost" data-schedule-offset="30">30분 후</button><button type="button" class="ghost" data-schedule-offset="60">1시간 후</button><button type="button" class="ghost" data-schedule-time-preset="09:00">오전 9시</button><button type="button" class="ghost" data-schedule-time-preset="18:00">오후 6시</button></div>
+        <p class="hint" id="schedule-help" data-schedule-summary>선택한 시각에 발송됩니다.</p>
+      </fieldset>
       <label class="sms-message">메시지 <textarea name="message" required maxlength="2000" placeholder="알림 내용을 입력하세요."><?= e((string) ($_POST['message'] ?? '')) ?></textarea><span>SMS 90바이트 초과 시 LMS로 자동 전환됩니다.</span></label>
       <p class="hint">발신번호: <?= e((string) $solapi['sender']) ?> · 허용 수신번호: <?= e($allowed) ?></p>
       <div class="sms-actions"><button class="primary" type="submit" name="action" value="sms-schedule">SOLAPI에 예약 접수</button><button class="ghost" type="submit" name="action" value="sms-send-now" formnovalidate>지금 즉시 발송</button></div>
