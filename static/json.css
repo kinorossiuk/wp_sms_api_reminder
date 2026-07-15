@@ -1,12 +1,8 @@
 .json-tool{max-width:1120px}
-.json-security-note{margin-top:2rem;border:1px solid var(--line);background:var(--surface)}
-.json-security-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.85rem 1rem;cursor:pointer;list-style:none}
-.json-security-head::-webkit-details-marker{display:none}
-.json-security-head::before{content:'+';display:grid;place-items:center;width:18px;height:18px;border:1px solid var(--line);color:var(--acid);font:700 .8rem ui-monospace,SFMono-Regular,Menlo,monospace}
-.json-security-note[open] .json-security-head{border-bottom:1px solid var(--line)}
-.json-security-note[open] .json-security-head::before{content:'−'}
-.json-security-head span:first-of-type{margin-right:auto;font-size:.8rem;font-weight:750;letter-spacing:-.01em}
-.json-security-head span:last-of-type{color:var(--acid);font:.64rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em}
+.work-notice{margin-top:2rem;border:1px solid var(--line);background:var(--surface)}
+.work-notice summary{padding:.9rem 1rem;cursor:pointer;color:var(--acid);font-weight:750;font-size:.8rem}
+.work-notice ul{display:grid;gap:.65rem;margin:0;padding:0 1rem 1rem 2rem;color:var(--muted);font-size:.74rem;line-height:1.6}
+.json-security-note{margin-top:2rem}
 .json-security-note ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:0;padding:0;list-style:none}
 .json-security-note li{display:grid;gap:.35rem;padding:1rem;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
 .json-security-note li:nth-child(2n){border-right:0}
@@ -54,4 +50,4 @@
 .json-clear{margin-left:auto}
 .json-status{min-height:1.3rem;margin:.8rem 0 0;color:var(--muted);font:.73rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}
 .json-status.is-error{color:var(--danger)}
-@media(max-width:760px){.json-security-head{align-items:flex-start;flex-direction:column}.json-security-note ul{grid-template-columns:1fr}.json-security-note li,.json-security-note li:nth-child(2n),.json-security-note li:nth-last-child(-n+2){border-right:0;border-bottom:1px solid var(--line)}.json-security-note li:last-child{border-bottom:0}.json-layout{grid-template-columns:1fr}.json-output,#json-input{min-height:330px}.json-file{margin-left:0}.json-clear{margin-left:0;width:100%;text-align:left}}
+@media(max-width:760px){.json-security-note ul{grid-template-columns:1fr}.json-security-note li,.json-security-note li:nth-child(2n),.json-security-note li:nth-last-child(-n+2){border-right:0;border-bottom:1px solid var(--line)}.json-security-note li:last-child{border-bottom:0}.json-layout{grid-template-columns:1fr}.json-output,#json-input{min-height:330px}.json-file{margin-left:0}.json-clear{margin-left:0;width:100%;text-align:left}}

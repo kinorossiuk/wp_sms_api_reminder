@@ -14,11 +14,8 @@ $jsonJsVersion = (string) (filemtime(__DIR__ . '/../static/json.js') ?: '1');
   <h1 id="tool-title">JSON<br>뷰어</h1>
   <p class="tool-intro">JSON 문법을 검사하고 읽기 좋게 정리하거나 한 줄로 압축합니다. 입력 내용은 브라우저 안에서만 처리됩니다.</p>
 
-  <details class="json-security-note">
-    <summary class="json-security-head">
-      <span id="json-security-title">업무 사용 전 주의사항 및 데이터 처리</span>
-      <span>LOCAL PROCESSING</span>
-    </summary>
+  <details class="work-notice json-security-note">
+    <summary id="json-security-title">업무 사용 전 주의사항 및 데이터 처리</summary>
     <ul>
       <li><strong>서버 미전송·미저장</strong><span>붙여 넣거나 파일로 연 JSON은 브라우저 메모리에서만 처리하며 서버, 외부 API, 분석 서비스로 보내지 않습니다.</span></li>
       <li><strong>사용자 요청만 실행</strong><span>클립보드 복사와 JSON 다운로드는 해당 버튼을 직접 눌렀을 때만 실행됩니다.</span></li>
