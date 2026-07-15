@@ -37,4 +37,11 @@ return [
         'path' => '/tools/temporary-note/',
         'status' => '로컬 저장',
     ],
+    'timer' => [
+        'name' => '타이머',
+        'description' => '남은 시간을 확인하고 소리·화면·OS 알림으로 종료를 알려줍니다.',
+        'category' => '집중',
+        'path' => '/tools/timer/',
+        'status' => '로컬 실행',
+    ],
 ];
