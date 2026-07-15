@@ -622,6 +622,9 @@
     DE: { label: '독일', callingCode: '49', defaultPrefix: '0151', prefixPattern: /^01[567]\d$/, prefixHint: '독일 모바일 시작값: 015x, 016x 또는 017x', nationalPattern: /^01[567]\d{8}$/, names: ['Lukas Müller', 'Anna Schmidt', 'Jonas Fischer', 'Emma Weber', 'Leon Wagner', 'Mia Becker'] },
     FR: { label: '프랑스', callingCode: '33', defaultPrefix: '06', prefixPattern: /^0[67]$/, prefixHint: '프랑스 모바일 시작값: 06 또는 07', nationalPattern: /^0[67]\d{8}$/, names: ['Lucas Martin', 'Emma Bernard', 'Hugo Dubois', 'Léa Thomas', 'Louis Robert', 'Chloé Richard'] },
     IN: { label: '인도', callingCode: '91', defaultPrefix: '9', prefixPattern: /^[6-9]$/, prefixHint: '인도 모바일 시작값: 6, 7, 8 또는 9', nationalPattern: /^[6-9]\d{9}$/, names: ['Aarav Sharma', 'Ananya Patel', 'Vivaan Singh', 'Diya Gupta', 'Arjun Kumar', 'Isha Mehta'] },
+    ID: { label: '인도네시아', callingCode: '62', defaultPrefix: '0812', prefixPattern: /^08[1-9]\d$/, prefixHint: '인도네시아 모바일 시작값: 081x~089x (예: 0812)', nationalPattern: /^08[1-9]\d{7,9}$/, names: ['Budi Santoso', 'Siti Aisyah', 'Andi Pratama', 'Dewi Lestari', 'Rizky Hidayat', 'Putri Maharani'] },
+    TR: { label: '튀르키예', callingCode: '90', defaultPrefix: '0532', prefixPattern: /^05\d{2}$/, prefixHint: '튀르키예 모바일 시작값: 05로 시작하는 숫자 4자리 (예: 0532)', nationalPattern: /^05\d{9}$/, names: ['Ahmet Yılmaz', 'Ayşe Kaya', 'Mehmet Demir', 'Elif Şahin', 'Can Aydın', 'Zeynep Arslan'] },
+    TM: { label: '투르크메니스탄', callingCode: '993', defaultPrefix: '72', prefixPattern: /^(6[1-5]|7[12])$/, prefixHint: '투르크메니스탄 모바일 시작값: 61~65, 71 또는 72 (예: 72)', nationalPattern: /^(6[1-5]|7[12])\d{6}$/, names: ['Aman Döwletov', 'Aşgabat Mämmedowa', 'Türkmenistanyň Berdiýew', 'Gülşat Orazowa', 'Serdar Annanýazow', 'Aýna Jumaýewa'] },
   };
 
   const serialDigits = (base, index, length) => String(base + index).padStart(length, '0').slice(-length);
@@ -652,10 +655,22 @@
       const serial = serialDigits(1_000_000, index, 7);
       nationalDigits = `${prefix}${serial}`;
       phone = `${prefix} ${serial}`;
+    } else if (countryCode === 'ID') {
+      const serial = serialDigits(1_000_000, index, 7);
+      nationalDigits = `${prefix}${serial}`;
+      phone = `${prefix} ${serial.slice(0, 3)} ${serial.slice(3)}`;
     } else if (countryCode === 'FR') {
       const serial = serialDigits(10_000_000, index, 8);
       nationalDigits = `${prefix}${serial}`;
       phone = nationalDigits.match(/.{1,2}/g).join(' ');
+    } else if (countryCode === 'TR') {
+      const serial = serialDigits(1_000_000, index, 7);
+      nationalDigits = `${prefix}${serial}`;
+      phone = `${prefix} ${serial.slice(0, 3)} ${serial.slice(3)}`;
+    } else if (countryCode === 'TM') {
+      const serial = serialDigits(100_000, index, 6);
+      nationalDigits = `${prefix}${serial}`;
+      phone = `${prefix} ${serial.slice(0, 2)} ${serial.slice(2, 4)} ${serial.slice(4)}`;
     } else {
       const serial = serialDigits(100_000_000, index, 9);
       nationalDigits = `${prefix}${serial}`;

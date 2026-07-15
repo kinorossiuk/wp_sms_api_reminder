@@ -66,7 +66,7 @@ $testDataJsVersion = (string) (filemtime(__DIR__ . '/../static/test-data.js') ?:
       <label>생성 개수 <input id="contact-count" type="number" min="1" max="1000" value="10" required inputmode="numeric"></label>
       <label>국가
         <select id="contact-country">
-          <option value="KR">대한민국 (+82)</option><option value="US">미국 (+1)</option><option value="CA">캐나다 (+1)</option><option value="GB">영국 (+44)</option><option value="JP">일본 (+81)</option><option value="AU">호주 (+61)</option><option value="SG">싱가포르 (+65)</option><option value="DE">독일 (+49)</option><option value="FR">프랑스 (+33)</option><option value="IN">인도 (+91)</option>
+          <option value="KR">대한민국 (+82)</option><option value="US">미국 (+1)</option><option value="CA">캐나다 (+1)</option><option value="GB">영국 (+44)</option><option value="JP">일본 (+81)</option><option value="AU">호주 (+61)</option><option value="SG">싱가포르 (+65)</option><option value="DE">독일 (+49)</option><option value="FR">프랑스 (+33)</option><option value="IN">인도 (+91)</option><option value="ID">인도네시아 (+62)</option><option value="TR">튀르키예 (+90)</option><option value="TM">투르크메니스탄 (+993)</option>
         </select>
       </label>
       <label>전화번호 시작값 <input id="contact-prefix" value="010" maxlength="5" required inputmode="numeric" autocomplete="off"><span id="contact-prefix-hint">대한민국 휴대전화 형식: 010</span></label>
