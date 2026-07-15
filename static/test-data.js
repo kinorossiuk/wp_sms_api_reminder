@@ -47,7 +47,6 @@
     : `${seconds}초`;
 
   const webmDurationForTarget = (target) => Math.max(1, Math.ceil((target * 8) / webmBitrate));
-  const mp4DurationForTarget = (target) => webmDurationForTarget(target);
 
   const safeName = (value, fallback) => {
     const cleaned = value.trim().replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-').replace(/^\.+|\.+$/g, '');
@@ -122,22 +121,65 @@
 
   const xml = (value) => value.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[character]);
 
-  const makeXlsx = (target) => paddedZip([
-    { name: '[Content_Types].xml', data: ascii('<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="bin" ContentType="application/octet-stream"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>') },
+  const randomIndex = (length) => {
+    if (window.crypto?.getRandomValues) {
+      const value = new Uint32Array(1);
+      window.crypto.getRandomValues(value);
+      return value[0] % length;
+    }
+    return Math.floor(Math.random() * length);
+  };
+
+  const documentPatterns = [
+    { name: '요약 보고서', title: 'SUMMARY REPORT', subtitle: 'Upload validation overview', accent: 'D7FF5F', rows: [['Status', 'Ready'], ['Files', '128'], ['Owner', 'QA Team'], ['Updated', '2026-07-15']] },
+    { name: '재고 목록', title: 'INVENTORY LIST', subtitle: 'Sample warehouse records', accent: '78DCE8', rows: [['Item', 'Quantity'], ['Keyboard', '42'], ['Monitor', '18'], ['Cable', '256']] },
+    { name: '주문 내역', title: 'ORDER LEDGER', subtitle: 'Fictional transaction data', accent: 'FFB86C', rows: [['Order', 'Amount'], ['TEST-1001', '12500'], ['TEST-1002', '8800'], ['TEST-1003', '31700']] },
+    { name: '일정표', title: 'PROJECT SCHEDULE', subtitle: 'Milestone test document', accent: 'BD93F9', rows: [['Phase', 'Date'], ['Planning', '2026-07-01'], ['Testing', '2026-07-15'], ['Release', '2026-07-31']] },
+    { name: '점검표', title: 'QUALITY CHECKLIST', subtitle: 'Synthetic inspection results', accent: '50FA7B', rows: [['Check', 'Result'], ['File name', 'PASS'], ['MIME type', 'PASS'], ['Size limit', 'PASS']] },
+    { name: '회의 기록', title: 'MEETING NOTES', subtitle: 'Generated discussion outline', accent: 'FF79C6', rows: [['Topic', 'Decision'], ['Scope', 'Approved'], ['Risk', 'Reviewed'], ['Next step', 'Retest']] },
+    { name: '설문 결과', title: 'SURVEY RESULTS', subtitle: 'Anonymous sample responses', accent: '8BE9FD', rows: [['Choice', 'Votes'], ['Option A', '37'], ['Option B', '29'], ['Option C', '14']] },
+    { name: '시스템 로그', title: 'SYSTEM LOG', subtitle: 'Non-production event sample', accent: 'F1FA8C', rows: [['Time', 'Event'], ['09:00:01', 'START'], ['09:00:03', 'UPLOAD'], ['09:00:04', 'SUCCESS']] },
+    { name: '연락처 표', title: 'CONTACT DIRECTORY', subtitle: 'Fictional test identities', accent: 'FF8C78', rows: [['Name', 'Extension'], ['Test User A', '1001'], ['Test User B', '1002'], ['Test User C', '1003']] },
+    { name: '월간 지표', title: 'MONTHLY METRICS', subtitle: 'Synthetic performance figures', accent: 'A4FFFF', rows: [['Metric', 'Value'], ['Uploads', '1,240'], ['Validated', '1,198'], ['Rejected', '42']] },
+  ];
+
+  const xlsxColumn = (index) => String.fromCharCode(65 + index);
+  const xlsxRows = (pattern) => [
+    [pattern.title, pattern.subtitle],
+    ...pattern.rows,
+  ].map((row, rowIndex) => `<row r="${rowIndex + 1}"${rowIndex === 0 ? ' ht="28" customHeight="1"' : ''}>${row.map((value, columnIndex) => `<c r="${xlsxColumn(columnIndex)}${rowIndex + 1}" t="inlineStr" s="${rowIndex === 0 ? 1 : rowIndex === 1 ? 2 : 0}"><is><t>${xml(value)}</t></is></c>`).join('')}</row>`).join('');
+
+  const makeXlsx = (target, pattern) => paddedZip([
+    { name: '[Content_Types].xml', data: ascii('<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="bin" ContentType="application/octet-stream"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>') },
     { name: '_rels/.rels', data: ascii('<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>') },
-    { name: 'xl/workbook.xml', data: ascii('<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Test data" sheetId="1" r:id="rId1"/></sheets></workbook>') },
-    { name: 'xl/_rels/workbook.xml.rels', data: ascii('<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>') },
-    { name: 'xl/worksheets/sheet1.xml', data: ascii('<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>ROSSI TEST DATA</t></is></c><c r="B1" t="inlineStr"><is><t>Generated locally</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>Target size</t></is></c><c r="B2" t="inlineStr"><is><t>' + xml(formatBytes(target)) + '</t></is></c></row></sheetData></worksheet>') },
+    { name: 'xl/workbook.xml', data: ascii(`<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${xml(pattern.name)}" sheetId="1" r:id="rId1"/></sheets></workbook>`) },
+    { name: 'xl/_rels/workbook.xml.rels', data: ascii('<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>') },
+    { name: 'xl/styles.xml', data: ascii(`<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Arial"/></font><font><b/><sz val="14"/><color rgb="FF111310"/><name val="Arial"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF${pattern.accent}"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="2" borderId="0" xfId="0" applyFill="1"/></cellXfs></styleSheet>`) },
+    { name: 'xl/worksheets/sheet1.xml', data: ascii(`<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="24" customWidth="1"/><col min="2" max="2" width="34" customWidth="1"/></cols><sheetData>${xlsxRows(pattern)}<row r="7"><c r="A7" t="inlineStr"><is><t>Target size</t></is></c><c r="B7" t="inlineStr"><is><t>${xml(formatBytes(target))}</t></is></c></row></sheetData></worksheet>`) },
   ], target);
 
-  const makeDocx = (target) => paddedZip([
+  const docxParagraphs = (pattern) => pattern.rows.map(([label, value], index) => `<w:p><w:pPr><w:spacing w:before="${index === 0 ? 240 : 80}" w:after="80"/><w:shd w:fill="${index % 2 ? 'F2F2F2' : 'FFFFFF'}"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="${pattern.accent}"/></w:rPr><w:t>${xml(label)}: </w:t></w:r><w:r><w:t>${xml(value)}</w:t></w:r></w:p>`).join('');
+
+  const makeDocx = (target, pattern, patternIndex) => paddedZip([
     { name: '[Content_Types].xml', data: ascii('<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="bin" ContentType="application/octet-stream"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>') },
     { name: '_rels/.rels', data: ascii('<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>') },
-    { name: 'word/document.xml', data: ascii('<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>ROSSI TEST DOCUMENT</w:t></w:r></w:p><w:p><w:r><w:t>This file was generated locally for upload testing.</w:t></w:r></w:p><w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr></w:body></w:document>') },
+    { name: 'word/document.xml', data: ascii(`<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:jc w:val="${patternIndex % 2 ? 'left' : 'center'}"/><w:spacing w:after="180"/><w:shd w:fill="${pattern.accent}"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="34"/><w:color w:val="111310"/></w:rPr><w:t>${xml(pattern.title)}</w:t></w:r></w:p><w:p><w:r><w:rPr><w:i/><w:color w:val="666666"/></w:rPr><w:t>${xml(pattern.subtitle)}</w:t></w:r></w:p>${docxParagraphs(pattern)}<w:p><w:r><w:t>Target size: ${xml(formatBytes(target))}</w:t></w:r></w:p><w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr></w:body></w:document>`) },
   ], target);
 
-  const buildPdf = (padding) => {
-    const pageContent = 'BT /F1 18 Tf 72 760 Td (ROSSI TEST DOCUMENT) Tj ET\n';
+  const pdfEscape = (value) => value.replace(/[\\()]/g, '\\$&');
+  const pdfPatternContent = (pattern, patternIndex, target) => {
+    const accent = [parseInt(pattern.accent.slice(0, 2), 16), parseInt(pattern.accent.slice(2, 4), 16), parseInt(pattern.accent.slice(4, 6), 16)].map((value) => (value / 255).toFixed(3));
+    const shapes = [
+      '54 700 487 90 re f', '54 700 18 90 re f', '54 760 487 30 re f', '54 700 487 8 re f',
+      '54 700 m 541 790 l 541 700 l h f', '54 700 90 90 re f', '54 700 487 90 re S',
+      '54 745 487 45 re f', '54 700 240 90 re f', '54 700 487 90 re f 66 712 463 66 re S',
+    ];
+    const rows = pattern.rows.map(([label, value], index) => `BT /F1 11 Tf 72 ${640 - index * 42} Td (${pdfEscape(label)}) Tj 180 0 Td (${pdfEscape(value)}) Tj ET`).join('\n');
+    return `q ${accent.join(' ')} rg ${shapes[patternIndex]} Q\nBT /F1 20 Tf 72 748 Td (${pdfEscape(pattern.title)}) Tj ET\nBT /F1 10 Tf 72 720 Td (${pdfEscape(pattern.subtitle)}) Tj ET\n${rows}\nBT /F1 9 Tf 72 430 Td (Target size: ${pdfEscape(formatBytes(target))}) Tj ET\n`;
+  };
+
+  const buildPdf = (padding, pattern, patternIndex, target) => {
+    const pageContent = pdfPatternContent(pattern, patternIndex, target);
     const objects = [
       '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
       '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
@@ -156,10 +198,10 @@
     return encoder.encode(result);
   };
 
-  const makePdf = (target) => {
+  const makePdf = (target, pattern, patternIndex) => {
     let padding = Math.max(0, target - 800);
     for (let attempts = 0; attempts < 8; attempts += 1) {
-      const output = buildPdf(padding);
+      const output = buildPdf(padding, pattern, patternIndex, target);
       const difference = target - output.length;
       if (difference === 0) return output;
       padding += difference;
@@ -167,8 +209,21 @@
     throw new Error('PDF 크기를 맞추지 못했습니다. 다시 시도해 주세요.');
   };
 
-  const makeText = (target) => {
-    const seed = encoder.encode('ROSSI TEST TEXT FILE\nThis content is generated locally for upload testing.\n');
+  const textPatterns = [
+    (pattern) => `${pattern.title}\n${pattern.subtitle}\n${pattern.rows.map((row) => row.join(': ')).join('\n')}\n`,
+    (pattern) => `label,value\n${pattern.rows.map((row) => row.map((value) => `"${value}"`).join(',')).join('\n')}\n`,
+    (pattern) => `${pattern.rows.map(([key, value]) => JSON.stringify({ key, value, test: true })).join('\n')}\n`,
+    (pattern) => `${pattern.rows.map(([event, value], index) => `2026-07-15T09:00:0${index}Z INFO ${event.toUpperCase().replace(/ /g, '_')} value=${value}`).join('\n')}\n`,
+    (pattern) => `[test-data]\n${pattern.rows.map(([key, value]) => `${key.toLowerCase().replace(/ /g, '_')}=${value}`).join('\n')}\n`,
+    (pattern) => `${pattern.title}\n${'-'.repeat(48)}\n${pattern.rows.map(([key, value]) => `${key.padEnd(24)}${value.padStart(20)}`).join('\n')}\n`,
+    (pattern) => `# ${pattern.title}\n\n${pattern.subtitle}\n\n${pattern.rows.map(([key, value]) => `- **${key}**: ${value}`).join('\n')}\n`,
+    (pattern) => `category\tvalue\tvalid\n${pattern.rows.map(([key, value]) => `${key}\t${value}\tTRUE`).join('\n')}\n`,
+    (pattern) => `<test-data title="${pattern.title}">\n${pattern.rows.map(([key, value]) => `  <item name="${key}">${value}</item>`).join('\n')}\n</test-data>\n`,
+    (pattern) => `${pattern.title}\n${pattern.rows.map(([key, value], index) => `[${index % 2 ? ' ' : 'x'}] ${key} -- ${value}`).join('\n')}\n`,
+  ];
+
+  const makeText = (target, pattern, patternIndex) => {
+    const seed = encoder.encode(textPatterns[patternIndex](pattern));
     const output = new Uint8Array(target);
     for (let offset = 0; offset < target; offset += seed.length) output.set(seed.subarray(0, Math.min(seed.length, target - offset)), offset);
     return output;
@@ -179,22 +234,74 @@
     return concat([be32(data.length), typeBytes, data, be32(crc32(concat([typeBytes, data])))]);
   };
 
-  const makePng = async (target) => {
+  const drawPngPattern = (context, width, height, pattern, patternIndex) => {
+    const accent = `#${pattern.accent}`;
+    context.fillStyle = '#171a17';
+    context.fillRect(0, 0, width, height);
+    const block = Math.max(24, Math.floor(width / 16));
+    if (patternIndex === 0) {
+      for (let y = 0; y < height; y += block) for (let x = 0; x < width; x += block) {
+        context.fillStyle = (Math.floor(x / block) + Math.floor(y / block)) % 2 ? accent : '#20241f';
+        context.fillRect(x, y, block, block);
+      }
+    } else if (patternIndex === 1) {
+      const gradient = context.createLinearGradient(0, 0, width, height);
+      gradient.addColorStop(0, accent); gradient.addColorStop(1, '#111310');
+      context.fillStyle = gradient; context.fillRect(0, 0, width, height);
+    } else if (patternIndex === 2) {
+      for (let x = -height; x < width; x += block * 2) {
+        context.fillStyle = accent; context.fillRect(x, 0, block, height);
+        context.save(); context.translate(x, 0); context.rotate(-Math.PI / 6); context.fillRect(0, 0, block, height * 2); context.restore();
+      }
+    } else if (patternIndex === 3) {
+      for (let radius = Math.max(width, height); radius > 0; radius -= block) {
+        context.beginPath(); context.arc(width / 2, height / 2, radius, 0, Math.PI * 2);
+        context.fillStyle = Math.floor(radius / block) % 2 ? accent : '#20241f'; context.fill();
+      }
+    } else if (patternIndex === 4) {
+      context.strokeStyle = accent; context.lineWidth = Math.max(3, width / 240);
+      for (let x = 0; x <= width; x += block) { context.beginPath(); context.moveTo(x, 0); context.lineTo(x, height); context.stroke(); }
+      for (let y = 0; y <= height; y += block) { context.beginPath(); context.moveTo(0, y); context.lineTo(width, y); context.stroke(); }
+    } else if (patternIndex === 5) {
+      for (let index = 0; index < 18; index += 1) {
+        const radius = block * (.5 + (index % 4) * .3);
+        context.beginPath(); context.arc((index * 97) % width, (index * 61) % height, radius, 0, Math.PI * 2);
+        context.fillStyle = index % 2 ? accent : '#505650'; context.fill();
+      }
+    } else if (patternIndex === 6) {
+      for (let y = 0; y < height; y += block) {
+        context.fillStyle = Math.floor(y / block) % 2 ? accent : '#252925'; context.fillRect(0, y, width, block);
+      }
+    } else if (patternIndex === 7) {
+      context.fillStyle = accent;
+      context.beginPath(); context.moveTo(width / 2, height * .08); context.lineTo(width * .92, height * .88); context.lineTo(width * .08, height * .88); context.closePath(); context.fill();
+      context.fillStyle = '#171a17'; context.beginPath(); context.moveTo(width / 2, height * .27); context.lineTo(width * .74, height * .75); context.lineTo(width * .26, height * .75); context.closePath(); context.fill();
+    } else if (patternIndex === 8) {
+      const gradient = context.createRadialGradient(width * .5, height * .5, block, width * .5, height * .5, width * .6);
+      gradient.addColorStop(0, accent); gradient.addColorStop(.5, '#505650'); gradient.addColorStop(1, '#111310');
+      context.fillStyle = gradient; context.fillRect(0, 0, width, height);
+    } else {
+      for (let y = 0; y < height; y += block) for (let x = 0; x < width; x += block) {
+        context.fillStyle = ((x / block) ^ (y / block)) % 3 ? '#20241f' : accent; context.fillRect(x, y, block, block);
+      }
+    }
+    context.fillStyle = 'rgba(12, 14, 12, .82)';
+    context.fillRect(width * .055, height * .34, width * .89, height * .32);
+  };
+
+  const makePng = async (target, pattern, patternIndex) => {
     const [width, height] = dimension.value.split('x').map(Number);
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const context = canvas.getContext('2d');
-    const block = Math.max(24, Math.floor(width / 16));
-    for (let y = 0; y < height; y += block) for (let x = 0; x < width; x += block) {
-      context.fillStyle = (Math.floor(x / block) + Math.floor(y / block)) % 2 ? '#d7ff5f' : '#20241f';
-      context.fillRect(x, y, block, block);
-    }
-    context.fillStyle = '#111310';
+    drawPngPattern(context, width, height, pattern, patternIndex);
+    context.fillStyle = `#${pattern.accent}`;
     context.font = `700 ${Math.max(24, Math.floor(width / 15))}px system-ui`;
-    context.fillText('ROSSI TEST IMAGE', Math.floor(width * .08), Math.floor(height * .48));
+    context.fillText(pattern.title, Math.floor(width * .08), Math.floor(height * .48));
+    context.fillStyle = '#f5f3eb';
     context.font = `500 ${Math.max(16, Math.floor(width / 32))}px system-ui`;
-    context.fillText(formatBytes(target), Math.floor(width * .08), Math.floor(height * .58));
+    context.fillText(`${pattern.name} · ${formatBytes(target)}`, Math.floor(width * .08), Math.floor(height * .58));
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
     if (!blob) throw new Error('PNG 이미지를 만들지 못했습니다.');
     const base = new Uint8Array(await blob.arrayBuffer());
@@ -253,54 +360,24 @@
     return { blob: new Blob(chunks, { type: 'video/webm' }), durationSeconds };
   };
 
-  const readBe32 = (data, offset) => ((data[offset] * 0x1000000) + (data[offset + 1] << 16) + (data[offset + 2] << 8) + data[offset + 3]);
-  const writeBe32 = (data, offset, value) => data.set(be32(value), offset);
+  const mp4SoundPatterns = ['440Hz 기준음', '880Hz 고음', '짧은 알림음', '긴 간격 비프음', '이중 화음', '상승 스윕', '교대 음계', '3음 아르페지오', '핑크 노이즈', '메트로놈'];
 
-  const findMp4Box = (data, type) => {
-    const bytes = ascii(type);
-    for (let index = 4; index <= data.length - 4; index += 1) {
-      if (bytes.every((byte, offset) => data[index + offset] === byte)) return index;
-    }
-    throw new Error(`MP4 ${type} 메타데이터를 찾지 못했습니다.`);
-  };
-
-  const setMp4Duration = (data, durationSeconds) => {
-    const movieHeader = findMp4Box(data, 'mvhd');
-    const trackHeader = findMp4Box(data, 'tkhd');
-    const mediaHeader = findMp4Box(data, 'mdhd');
-    const timeToSample = findMp4Box(data, 'stts');
-    const editList = findMp4Box(data, 'elst');
-    const movieTimescale = readBe32(data, movieHeader + 16);
-    const mediaTimescale = readBe32(data, mediaHeader + 16);
-    const sampleCount = readBe32(data, timeToSample + 12);
-    const mediaDuration = mediaTimescale * durationSeconds;
-    if (!Number.isSafeInteger(mediaDuration) || mediaDuration > 0xffffffff) throw new Error('선택한 MP4 길이가 너무 깁니다.');
-    writeBe32(data, movieHeader + 20, movieTimescale * durationSeconds);
-    writeBe32(data, trackHeader + 24, movieTimescale * durationSeconds);
-    writeBe32(data, mediaHeader + 20, mediaDuration);
-    writeBe32(data, timeToSample + 16, Math.max(1, Math.round(mediaDuration / sampleCount)));
-    writeBe32(data, editList + 12, movieTimescale * durationSeconds);
-    return data;
-  };
-
-  const makeMp4 = async (target) => {
-    const response = await fetch('/static/test-video.mp4?v=2', { cache: 'no-cache' });
+  const makeMp4 = async (target, patternIndex) => {
+    const response = await fetch(`/static/test-video-${patternIndex + 1}.mp4?v=1`, { cache: 'no-cache' });
     if (!response.ok) throw new Error('MP4 원본 영상을 불러오지 못했습니다. 다시 시도해 주세요.');
     const template = new Uint8Array(await response.arrayBuffer());
     if (target < template.length + 8) throw new Error(`선택한 용량이 MP4 최소 크기(${formatBytes(template.length + 8)})보다 작습니다.`);
-    const durationSeconds = mp4DurationForTarget(target);
-    const timedTemplate = setMp4Duration(template, durationSeconds);
-    const freeBoxSize = target - timedTemplate.length;
+    const freeBoxSize = target - template.length;
     const header = concat([be32(freeBoxSize), ascii('free')]);
     const zeroChunk = new Uint8Array(Math.min(1024 * 1024, freeBoxSize - 8));
-    const parts = [timedTemplate, header];
+    const parts = [template, header];
     let remaining = freeBoxSize - 8;
     while (remaining > 0) {
       const length = Math.min(remaining, zeroChunk.length);
       parts.push(length === zeroChunk.length ? zeroChunk : zeroChunk.subarray(0, length));
       remaining -= length;
     }
-    return { blob: new Blob(parts, { type: 'video/mp4' }), durationSeconds };
+    return { blob: new Blob(parts, { type: 'video/mp4' }), durationSeconds: 6, patternName: mp4SoundPatterns[patternIndex] };
   };
 
   const targetBytes = () => {
@@ -317,10 +394,10 @@
     imageOption.hidden = !isImage;
     fileSize.max = '300';
     fileHint.textContent = fileKind.value === 'mp4'
-      ? 'H.264 Baseline MP4로 생성합니다. 목표 용량에 따라 영상 길이를 자동 지정하고, MP4 표준 여유 영역으로 목표 바이트에 정확히 맞춥니다.'
+      ? 'H.264/AAC MP4로 생성하며 10가지 테스트 사운드 중 하나를 무작위로 넣습니다. MP4 표준 여유 영역으로 목표 바이트에 정확히 맞춥니다.'
       : isVideo
       ? '모바일 호환을 위해 실제 WebM을 녹화합니다. 목표 용량에 맞춰 영상 길이를 자동으로 정합니다. 실제 파일 크기는 목표에 가깝게 생성됩니다.'
-      : '실제 파일 형식을 만든 뒤, 보이지 않는 패딩을 추가해 목표 바이트에 맞춥니다. 최대 300 MiB까지 가능하며 큰 파일은 충분한 브라우저 메모리가 필요합니다.';
+      : 'PNG, TXT, PDF, DOCX, XLSX는 10가지 테스트 패턴 중 하나를 무작위로 만들고, 보이지 않는 패딩으로 목표 바이트에 맞춥니다.';
   };
 
   tabs.forEach((tab) => tab.addEventListener('click', () => {
@@ -343,15 +420,19 @@
         : '파일을 생성하고 있습니다…');
       let data;
       let videoDurationSeconds;
-      if (kind === 'png') data = await makePng(target);
-      else if (kind === 'txt') data = makeText(target);
-      else if (kind === 'pdf') data = makePdf(target);
-      else if (kind === 'docx') data = makeDocx(target);
-      else if (kind === 'xlsx') data = makeXlsx(target);
+      let generatedPatternName;
+      const patternIndex = randomIndex(documentPatterns.length);
+      const pattern = documentPatterns[patternIndex];
+      if (kind === 'png') { data = await makePng(target, pattern, patternIndex); generatedPatternName = pattern.name; }
+      else if (kind === 'txt') { data = makeText(target, pattern, patternIndex); generatedPatternName = pattern.name; }
+      else if (kind === 'pdf') { data = makePdf(target, pattern, patternIndex); generatedPatternName = pattern.name; }
+      else if (kind === 'docx') { data = makeDocx(target, pattern, patternIndex); generatedPatternName = pattern.name; }
+      else if (kind === 'xlsx') { data = makeXlsx(target, pattern); generatedPatternName = pattern.name; }
       else if (kind === 'mp4') {
-        const mp4 = await makeMp4(target);
+        const mp4 = await makeMp4(target, patternIndex);
         data = mp4.blob;
         videoDurationSeconds = mp4.durationSeconds;
+        generatedPatternName = mp4.patternName;
       }
       else {
         const webm = await makeWebm(target);
@@ -365,8 +446,8 @@
       setStatus(fileStatus, kind === 'webm'
         ? `WebM 영상 ${formatBytes(data.size)}을 만들었습니다. 자동 지정 길이: ${formatDuration(videoDurationSeconds)} · 목표: ${formatBytes(target)}`
         : kind === 'mp4'
-          ? `H.264 MP4 영상 ${formatBytes(data.size)}을 만들었습니다. 자동 지정 길이: ${formatDuration(videoDurationSeconds)} · 목표 용량과 일치합니다.`
-        : `${kind.toUpperCase()} 파일 ${formatBytes(data.length)}을 만들었습니다.`);
+          ? `H.264/AAC MP4 영상 ${formatBytes(data.size)}을 만들었습니다. 사운드: ${generatedPatternName} · 길이: ${formatDuration(videoDurationSeconds)} · 목표 용량과 일치합니다.`
+        : `${kind.toUpperCase()} 파일 ${formatBytes(data.length)}을 만들었습니다. 패턴: ${generatedPatternName} (랜덤 10종)`);
       button.disabled = false;
     } catch (error) {
       setStatus(fileStatus, error instanceof Error ? error.message : '파일을 생성하지 못했습니다.', true);

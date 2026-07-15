@@ -72,6 +72,10 @@ if ($configured) {
 $db = is_array($config['database'] ?? null) ? $config['database'] : [];
 $solapi = is_array($config['solapi'] ?? null) ? $config['solapi'] : [];
 $limits = is_array($config['limits'] ?? null) ? $config['limits'] : [];
+$hasDbHost = trim((string) ($db['host'] ?? '')) !== '';
+$hasDbPort = (int) ($db['port'] ?? 0) > 0;
+$hasDbName = trim((string) ($db['name'] ?? '')) !== '';
+$hasDbUser = trim((string) ($db['user'] ?? '')) !== '';
 $allowed = is_array($limits['allowed_recipients'] ?? null) ? implode(', ', $limits['allowed_recipients']) : '';
 $nowMin = (new DateTimeImmutable('now', new DateTimeZone(ROSSI_SMS_TIMEZONE)))->modify('+1 minute')->format('Y-m-d\\TH:i:s');
 function rossi_sms_status_label(string $status): string { return match ($status) { 'SCHEDULED' => '예약됨', 'SENDING' => '발송 중', 'COMPLETE' => '완료', 'CANCELLED' => '취소됨', 'FAILED', 'PARTIAL_FAILED' => '실패', 'UNKNOWN' => '확인 필요', default => $status }; }
@@ -108,10 +112,10 @@ $smsCssVersion = (string) (filemtime(__DIR__ . '/../static/sms.css') ?: '1');
   <details class="sms-settings" <?= $configured ? '' : 'open' ?>><summary>SOLAPI 및 환경 설정 <?= $configured ? '수정' : '시작' ?></summary>
     <form class="sms-form sms-config" method="post" autocomplete="off">
       <input type="hidden" name="action" value="sms-save-config"><input type="hidden" name="csrf" value="<?= e((string) $auth['csrf']) ?>">
-      <label>MySQL 호스트 <input name="db_host" required value="<?= e((string) ($db['host'] ?? 'localhost')) ?>"></label>
-      <label>MySQL 포트 <input name="db_port" required inputmode="numeric" value="<?= e((string) ($db['port'] ?? '3306')) ?>"></label>
-      <label>데이터베이스명 <input name="db_name" required value="<?= e((string) ($db['name'] ?? '')) ?>"></label>
-      <label>데이터베이스 사용자 <input name="db_user" required value="<?= e((string) ($db['user'] ?? '')) ?>"></label>
+      <label>MySQL 호스트 <input name="db_host" <?= $hasDbHost ? '' : 'required' ?> value="<?= $hasDbHost ? '' : 'localhost' ?>" placeholder="<?= $hasDbHost ? '비워두면 현재 값 유지' : '' ?>"></label>
+      <label>MySQL 포트 <input name="db_port" <?= $hasDbPort ? '' : 'required' ?> inputmode="numeric" value="<?= $hasDbPort ? '' : '3306' ?>" placeholder="<?= $hasDbPort ? '비워두면 현재 값 유지' : '' ?>"></label>
+      <label>데이터베이스명 <input name="db_name" <?= $hasDbName ? '' : 'required' ?> value="" placeholder="<?= $hasDbName ? '비워두면 현재 값 유지' : '' ?>"></label>
+      <label>데이터베이스 사용자 <input name="db_user" <?= $hasDbUser ? '' : 'required' ?> value="" placeholder="<?= $hasDbUser ? '비워두면 현재 값 유지' : '' ?>"></label>
       <label>데이터베이스 비밀번호 <input name="db_password" type="password" <?= $configured ? '' : 'required' ?> placeholder="<?= $configured ? '비워두면 현재 값 유지' : '' ?>"></label>
       <label>SOLAPI API Key <input name="solapi_api_key" <?= $configured ? '' : 'required' ?> placeholder="<?= $configured ? '비워두면 현재 값 유지' : '' ?>"></label>
       <label>SOLAPI API Secret <input name="solapi_api_secret" type="password" <?= $configured ? '' : 'required' ?> placeholder="<?= $configured ? '비워두면 현재 값 유지' : '' ?>"></label>
@@ -119,7 +123,7 @@ $smsCssVersion = (string) (filemtime(__DIR__ . '/../static/sms.css') ?: '1');
       <label>허용 수신번호 <input name="allowed_recipients" required value="<?= e($allowed) ?>" placeholder="01012345678, 01098765432"><span>쉼표로 구분합니다. 이 목록 밖 번호는 예약할 수 없습니다.</span></label>
       <label>하루 예약 한도 <input name="daily_max" required inputmode="numeric" value="<?= e((string) ($limits['daily_max'] ?? '20')) ?>"></label>
       <button class="primary" type="submit">설정 안전하게 저장</button>
-      <p class="hint">API Secret과 DB 비밀번호는 다시 화면에 표시되지 않습니다. 웹 루트 밖 <code>~/.rossi-tools/sms.php</code>에 600 권한으로 저장됩니다.</p>
+      <p class="hint">저장된 MySQL 연결 정보와 API 비밀정보는 다시 화면에 표시되지 않으며, 비워두면 현재 값을 유지합니다. 웹 루트 밖 <code>~/.rossi-tools/sms.php</code>에 600 권한으로 저장됩니다.</p>
     </form>
   </details>
 

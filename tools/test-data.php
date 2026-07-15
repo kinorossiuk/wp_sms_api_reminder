@@ -43,7 +43,7 @@ $testDataJsVersion = (string) (filemtime(__DIR__ . '/../static/test-data.js') ?:
       <label class="file-image-option">이미지 크기
         <select id="image-dimension" name="dimension"><option value="800x600">800 × 600</option><option value="1280x720">1280 × 720</option><option value="1920x1080">1920 × 1080</option></select>
       </label>
-      <p class="test-hint" id="file-hint">PNG, TXT, PDF, DOCX, XLSX는 목표 바이트에 맞춰 생성합니다. WebM은 최신 Chrome·Edge에서 지원됩니다.</p>
+      <p class="test-hint" id="file-hint">PNG, TXT, PDF, DOCX, XLSX는 10가지 패턴 중 하나를 무작위로 선택해 목표 바이트에 맞춰 생성합니다.</p>
       <button class="primary" type="submit">파일 생성 및 다운로드</button>
       <p class="test-status" id="file-status" role="status" aria-live="polite">모든 파일은 최대 300 MiB까지 만들 수 있습니다. 큰 파일은 충분한 브라우저 메모리가 필요합니다.</p>
     </form>
