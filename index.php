@@ -48,6 +48,33 @@ function e(string $value): string
     .hero-copy { max-width:34rem; color:var(--muted); font-size:1rem; line-height:1.7; }
     .tool-count { min-width:108px; padding:1rem; border:1px solid var(--line); color:var(--muted); font:.72rem/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
     .tool-count strong { display:block; color:var(--text); font-size:2rem; line-height:1; margin-bottom:.45rem; }
+    .work-links { margin-bottom:4rem; }
+    .section-actions { display:flex; align-items:center; gap:.65rem; }
+    .section-action { border:1px solid var(--line); background:var(--surface); color:var(--text); padding:.65rem .85rem; cursor:pointer; font-size:.75rem; font-weight:750; }
+    .section-action:hover { border-color:var(--acid); color:var(--acid); }
+    .work-link-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; }
+    .work-link-card { min-height:150px; display:flex; flex-direction:column; padding:1.15rem; border:1px solid var(--line); background:var(--surface); }
+    .work-link-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; }
+    .work-link-card h3 { margin:.25rem 0 .45rem; font-size:1.15rem; letter-spacing:-.04em; overflow-wrap:anywhere; }
+    .work-link-host { margin:0; color:var(--muted); font:.68rem/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; overflow-wrap:anywhere; }
+    .work-link-edit { flex:0 0 auto; border:0; background:transparent; color:var(--muted); padding:.25rem; cursor:pointer; font-size:.72rem; }
+    .work-link-edit:hover { color:var(--acid); }
+    .work-link-open { margin-top:auto; display:flex; align-items:center; justify-content:space-between; border:0; background:var(--acid); color:#10120f; padding:.7rem .8rem; text-decoration:none; font-size:.76rem; font-weight:800; }
+    .work-link-empty { grid-column:1/-1; padding:1.4rem; border:1px dashed var(--line); color:var(--muted); font-size:.82rem; line-height:1.6; }
+    .link-dialog { width:min(92vw,520px); border:1px solid var(--line); background:var(--surface); color:var(--text); padding:0; }
+    .link-dialog::backdrop { background:rgba(0,0,0,.72); }
+    .link-form { padding:1.4rem; }
+    .link-form-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.4rem; }
+    .link-form-head h2 { margin:0; font-size:1rem; }
+    .dialog-close { border:0; background:transparent; color:var(--muted); padding:.3rem; cursor:pointer; font-size:1.15rem; }
+    .link-field { display:block; margin-bottom:1rem; color:var(--muted); font-size:.78rem; }
+    .link-field input { width:100%; margin-top:.5rem; border:1px solid var(--line); background:#0c0e0c; color:var(--text); padding:.8rem .9rem; outline:none; }
+    .link-field input:focus { border-color:var(--acid); }
+    .link-form-error { min-height:1.25rem; margin:.15rem 0 .65rem; color:var(--danger); font-size:.76rem; }
+    .link-form-actions { display:flex; align-items:center; justify-content:flex-end; gap:.6rem; }
+    .link-delete { margin-right:auto; border:0; background:transparent; color:var(--danger); padding:.7rem 0; cursor:pointer; }
+    .link-cancel { border:1px solid var(--line); background:transparent; color:var(--muted); padding:.7rem .9rem; cursor:pointer; }
+    .link-save { border:0; background:var(--acid); color:#10120f; padding:.75rem 1rem; font-weight:800; cursor:pointer; }
     .section-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
     .section-head h2 { margin:0; font-size:.88rem; letter-spacing:-.02em; }
     .section-head span { color:var(--muted); font:.7rem ui-monospace,SFMono-Regular,Menlo,monospace; }
@@ -83,7 +110,7 @@ function e(string $value): string
     .tool-intro { max-width:38rem; color:var(--muted); font-size:1rem; line-height:1.7; }
     .coming-soon { display:inline-block; margin-top:2rem; padding:.75rem 1rem; border:1px solid var(--line); color:var(--muted); font:.72rem ui-monospace,SFMono-Regular,Menlo,monospace; }
     .not-found { padding:8rem 0; }
-    @media (max-width:760px) { .hero { grid-template-columns:1fr; } .tool-count { width:max-content; } .tool-grid { grid-template-columns:1fr; } .tool-card { min-height:230px; } .topbar { min-height:70px; gap:.45rem; } .global-nav { order:3; width:100%; margin:0; overflow-x:auto; padding-bottom:.65rem; } .global-nav a { flex:0 0 auto; } }
+    @media (max-width:760px) { .hero { grid-template-columns:1fr; } .tool-count { width:max-content; } .tool-grid,.work-link-grid { grid-template-columns:1fr; } .tool-card { min-height:230px; } .topbar { min-height:70px; gap:.45rem; } .global-nav { order:3; width:100%; margin:0; overflow-x:auto; padding-bottom:.65rem; } .global-nav a { flex:0 0 auto; } }
   </style>
 </head>
 <body class="<?= $status === 'authenticated' ? '' : 'access-page' ?>">
@@ -119,6 +146,36 @@ function e(string $value): string
         </div>
         <div class="tool-count"><strong><?= count($tools) ?></strong>TOOLS AVAILABLE</div>
       </section>
+
+      <section class="work-links" aria-labelledby="work-links-title">
+        <div class="section-head">
+          <div><h2 id="work-links-title">업무 도구</h2><span>현재 브라우저에만 저장됩니다</span></div>
+          <div class="section-actions"><button class="section-action" id="add-work-link" type="button">+ 링크 등록</button></div>
+        </div>
+        <div class="work-link-grid" id="work-link-grid" aria-live="polite"></div>
+      </section>
+
+      <dialog class="link-dialog" id="work-link-dialog" aria-labelledby="work-link-dialog-title">
+        <form class="link-form" id="work-link-form" novalidate>
+          <div class="link-form-head">
+            <h2 id="work-link-dialog-title">업무 도구 등록</h2>
+            <button class="dialog-close" type="button" data-dialog-close aria-label="닫기">×</button>
+          </div>
+          <input id="work-link-id" type="hidden">
+          <label class="link-field" for="work-link-name">도구 이름
+            <input id="work-link-name" type="text" required maxlength="50" autocomplete="off" placeholder="예: 사내 그룹웨어">
+          </label>
+          <label class="link-field" for="work-link-url">하이퍼링크
+            <input id="work-link-url" type="url" required maxlength="2048" inputmode="url" autocomplete="off" placeholder="https://intranet.example.com">
+          </label>
+          <p class="link-form-error" id="work-link-error" role="alert"></p>
+          <div class="link-form-actions">
+            <button class="link-delete" id="delete-work-link" type="button" hidden>삭제</button>
+            <button class="link-cancel" type="button" data-dialog-close>취소</button>
+            <button class="link-save" type="submit">저장</button>
+          </div>
+        </form>
+      </dialog>
 
       <section aria-labelledby="all-tools-title">
         <div class="section-head"><h2 id="all-tools-title">모든 도구</h2><span>ALL TOOLS</span></div>
@@ -172,6 +229,9 @@ function e(string $value): string
       <p><?= $status === 'storage-error' ? '로그인 보안 저장소를 사용할 수 없습니다.' : '사이트 보안 설정이 아직 완료되지 않았습니다.' ?></p>
     <?php endif; ?>
   </main>
+<?php endif; ?>
+<?php if ($status === 'authenticated' && $currentTool === '' && $requestedTool === ''): ?>
+  <script src="/static/work-links.js" defer></script>
 <?php endif; ?>
 </body>
 </html>
