@@ -23,10 +23,24 @@
 .test-actions{display:flex;gap:.7rem;align-items:center}
 .test-actions .primary{margin:0}
 .wide-field{grid-column:1/-1}
+.message-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;padding:1px;background:var(--line)}
+.message-metrics div{display:grid;gap:.35rem;min-width:0;padding:.85rem;background:#0c0e0c}
+.message-metrics span{color:var(--muted);font:.68rem/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}
+.message-metrics strong{overflow-wrap:anywhere;color:var(--acid);font:750 1.05rem/1.2 ui-monospace,SFMono-Regular,Menlo,monospace}
+.emoji-generator{min-width:0;margin:.35rem 0 0;padding:1rem;border:1px solid var(--line)}
+.emoji-generator legend{padding:0 .45rem;color:var(--acid);font-size:.8rem;font-weight:750}
+.emoji-controls{display:grid;grid-template-columns:1fr 1.35fr .8fr auto;gap:.75rem;align-items:end}
+.emoji-controls .ghost{height:47px;white-space:nowrap}
+.emoji-generator .test-hint{margin:.9rem 0}
+.emoji-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(48px,1fr));gap:.4rem;overflow:auto;max-height:280px;padding:.65rem;border:1px solid var(--line);background:#0c0e0c}
+.emoji-option{position:relative;display:grid;min-height:56px;place-items:center;margin:0;border:1px solid transparent;background:var(--surface-2);color:var(--text);cursor:pointer;font:1.5rem/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.emoji-option small{position:absolute;right:3px;bottom:3px;color:var(--muted);font:600 .48rem/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+.emoji-option:hover,.emoji-option:focus-visible{border-color:var(--acid);background:var(--surface);outline:0}
+.emoji-empty{margin:.75rem 0 0;color:var(--muted);font-size:.75rem}
 .contact-preview{overflow:auto;max-height:300px;border:1px solid var(--line);background:#0c0e0c}
 .contact-preview table{width:100%;border-collapse:collapse;font-size:.78rem}
 .contact-preview th,.contact-preview td{padding:.7rem;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
 .contact-preview th{background:var(--surface-2);color:var(--acid);font-weight:650}
 .contact-preview td{color:var(--muted)}
 .contact-preview tbody tr:hover td{background:var(--surface-2);color:var(--text)}
-@media(max-width:760px){.test-tabs{overflow:auto}.test-tabs button{flex:0 0 auto;white-space:nowrap}.test-form{grid-template-columns:1fr}.test-actions{flex-wrap:wrap}}
+@media(max-width:760px){.test-tabs{overflow:auto}.test-tabs button{flex:0 0 auto;white-space:nowrap}.test-form{grid-template-columns:1fr}.message-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.emoji-controls{grid-template-columns:1fr}.emoji-controls .ghost{width:100%}.test-actions{flex-wrap:wrap}}

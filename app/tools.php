@@ -18,7 +18,7 @@ return [
     ],
     'test-data' => [
         'name' => '테스트 데이터 생성기',
-        'description' => '용량별 파일, 문자 경계값, 더미 연락처를 브라우저에서 만듭니다.',
+        'description' => '용량별 파일, 문자·이모지 경계값, 더미 연락처를 브라우저에서 만듭니다.',
         'category' => '테스트',
         'path' => '/tools/test-data/',
         'status' => '사용 가능',

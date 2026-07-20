@@ -22,7 +22,18 @@
   const messagePrefix = root.querySelector('#message-prefix');
   const messageOutput = root.querySelector('#message-output');
   const messageCopy = root.querySelector('#message-copy');
+  const messageClear = root.querySelector('#message-clear');
+  const messageGraphemes = root.querySelector('#message-graphemes');
+  const messageCodePoints = root.querySelector('#message-code-points');
+  const messageCodeUnits = root.querySelector('#message-code-units');
+  const messageBytes = root.querySelector('#message-bytes');
   const messageStatus = root.querySelector('#message-status');
+  const emojiCategory = root.querySelector('#emoji-category');
+  const emojiSearch = root.querySelector('#emoji-search');
+  const emojiRandomCount = root.querySelector('#emoji-random-count');
+  const emojiRandom = root.querySelector('#emoji-random');
+  const emojiGrid = root.querySelector('#emoji-grid');
+  const emojiEmpty = root.querySelector('#emoji-empty');
   const contactForm = root.querySelector('#test-contact-form');
   const contactCount = root.querySelector('#contact-count');
   const contactCountry = root.querySelector('#contact-country');
@@ -594,23 +605,141 @@
     }
   });
 
-  const messageLength = (value) => Array.from(value).length;
+  const graphemeSegmenter = typeof Intl.Segmenter === 'function'
+    ? new Intl.Segmenter('ko', { granularity: 'grapheme' })
+    : null;
+  const messageSegments = (value) => graphemeSegmenter
+    ? Array.from(graphemeSegmenter.segment(value), ({ segment }) => segment)
+    : Array.from(value);
+  const messageLength = (value) => messageSegments(value).length;
+  const messageStats = (value) => ({
+    graphemes: messageLength(value),
+    codePoints: Array.from(value).length,
+    codeUnits: value.length,
+    bytes: encoder.encode(value).length,
+  });
+  const updateMessageMetrics = () => {
+    const stats = messageStats(messageOutput.value);
+    messageGraphemes.textContent = stats.graphemes.toLocaleString('ko-KR');
+    messageCodePoints.textContent = stats.codePoints.toLocaleString('ko-KR');
+    messageCodeUnits.textContent = stats.codeUnits.toLocaleString('ko-KR');
+    messageBytes.textContent = stats.bytes.toLocaleString('ko-KR');
+    return stats;
+  };
+  const describeMessageStats = (stats) => `화면 ${stats.graphemes.toLocaleString('ko-KR')}자 · 코드 포인트 ${stats.codePoints.toLocaleString('ko-KR')}개 · UTF-16 ${stats.codeUnits.toLocaleString('ko-KR')} · UTF-8 ${stats.bytes.toLocaleString('ko-KR')} bytes`;
+
+  const emojiGroups = {
+    smileys: [
+      ['😀', '활짝 웃는 얼굴', 'smile grin happy'], ['😃', '큰 눈으로 웃는 얼굴', 'smile happy'], ['😂', '기쁨의 눈물', 'laugh tears'], ['🥰', '하트와 웃는 얼굴', 'love heart'],
+      ['😎', '선글라스 얼굴', 'cool sunglasses'], ['🤔', '생각하는 얼굴', 'thinking'], ['😭', '크게 우는 얼굴', 'cry sad'], ['😡', '화난 얼굴', 'angry'],
+    ],
+    people: [
+      ['👋', '손 흔들기', 'wave hand'], ['👍', '좋아요', 'thumbs up like'], ['🙏', '모은 두 손', 'please thanks pray'], ['💪', '힘센 팔', 'strong muscle'],
+      ['👏', '박수', 'clap'], ['🙌', '두 손 들기', 'celebrate hands'], ['👀', '눈', 'eyes look'], ['🧑', '사람', 'person'], ['👩', '여성', 'woman'], ['👨', '남성', 'man'],
+    ],
+    animals: [
+      ['🐶', '강아지', 'dog puppy'], ['🐱', '고양이', 'cat'], ['🐻', '곰', 'bear'], ['🐼', '판다', 'panda'], ['🦊', '여우', 'fox'],
+      ['🐸', '개구리', 'frog'], ['🐰', '토끼', 'rabbit'], ['🦁', '사자', 'lion'], ['🌸', '벚꽃', 'flower blossom'], ['🌈', '무지개', 'rainbow'],
+    ],
+    food: [
+      ['🍎', '사과', 'apple fruit'], ['🍕', '피자', 'pizza'], ['🍔', '햄버거', 'burger'], ['🍜', '국수', 'noodle ramen'],
+      ['🍣', '초밥', 'sushi'], ['☕', '커피', 'coffee'], ['🎂', '생일 케이크', 'birthday cake'], ['🥑', '아보카도', 'avocado'],
+    ],
+    activity: [
+      ['⚽', '축구공', 'soccer football'], ['🏀', '농구공', 'basketball'], ['🎾', '테니스', 'tennis'], ['🎮', '게임', 'game controller'],
+      ['🎨', '미술 팔레트', 'art palette'], ['🎵', '음표', 'music note'], ['🏆', '트로피', 'trophy'], ['🚴', '자전거 타는 사람', 'bicycle cycling'],
+    ],
+    travel: [
+      ['🚗', '자동차', 'car'], ['🚕', '택시', 'taxi'], ['🚌', '버스', 'bus'], ['✈️', '비행기', 'airplane flight'],
+      ['🚀', '로켓', 'rocket'], ['🏠', '집', 'house home'], ['🗺️', '세계 지도', 'world map'], ['🗼', '도쿄 타워', 'tower travel'],
+    ],
+    objects: [
+      ['📱', '휴대전화', 'phone mobile'], ['💻', '노트북', 'computer laptop'], ['⌚', '손목시계', 'watch'], ['📷', '카메라', 'camera'],
+      ['💡', '전구', 'idea light'], ['🔥', '불', 'fire'], ['🎁', '선물', 'gift'], ['📌', '압정', 'pin'],
+    ],
+    symbols: [
+      ['❤️', '빨간 하트', 'red heart love'], ['💛', '노란 하트', 'yellow heart'], ['✅', '체크 표시', 'check done'], ['❌', '엑스 표시', 'cross wrong'],
+      ['⚠️', '경고', 'warning'], ['⭐', '별', 'star'], ['✨', '반짝임', 'sparkles'], ['💯', '백 점', 'hundred score'],
+    ],
+    flags: [
+      ['🇰🇷', '대한민국 국기', 'korea flag kr'], ['🇺🇸', '미국 국기', 'united states flag us'], ['🇯🇵', '일본 국기', 'japan flag jp'], ['🇬🇧', '영국 국기', 'united kingdom flag gb'],
+      ['🇨🇦', '캐나다 국기', 'canada flag ca'], ['🇦🇺', '호주 국기', 'australia flag au'], ['🇫🇷', '프랑스 국기', 'france flag fr'], ['🇩🇪', '독일 국기', 'germany flag de'],
+    ],
+    sequences: [
+      ['👍🏽', '좋아요: 갈색 피부', 'thumbs up skin tone two code points'], ['👋🏻', '손 흔들기: 밝은 피부', 'wave skin tone two code points'], ['🙏🏿', '모은 두 손: 어두운 피부', 'pray skin tone two code points'],
+      ['👨‍💻', '남성 개발자', 'man technologist zwj three code points'], ['👩‍🔬', '여성 과학자', 'woman scientist zwj three code points'], ['🧑‍🚀', '우주비행사', 'astronaut zwj three code points'],
+      ['👨‍👩‍👧‍👦', '가족', 'family zwj'], ['👩‍❤️‍👩', '하트가 있는 두 여성', 'couple love zwj'], ['🏳️‍🌈', '무지개 깃발', 'rainbow flag zwj'], ['🏴‍☠️', '해적 깃발', 'pirate flag zwj'],
+    ],
+  };
+  const emojiItems = Object.entries(emojiGroups).flatMap(([category, items]) => items.map(([value, label, keywords]) => ({ category, value, label, keywords })));
+  const filteredEmojiItems = () => {
+    const query = emojiSearch.value.trim().toLocaleLowerCase('ko-KR');
+    return emojiItems.filter((item) => {
+      const codePointCount = Array.from(item.value).length;
+      const matchesCategory = emojiCategory.value === 'all'
+        || (emojiCategory.value === 'single' && codePointCount === 1)
+        || (emojiCategory.value === 'sequences' && codePointCount > 1)
+        || item.category === emojiCategory.value;
+      return matchesCategory && (!query || `${item.label} ${item.keywords}`.toLocaleLowerCase('ko-KR').includes(query));
+    });
+  };
+  const insertMessageText = (text) => {
+    const start = messageOutput.selectionStart ?? messageOutput.value.length;
+    const end = messageOutput.selectionEnd ?? start;
+    messageOutput.setRangeText(text, start, end, 'end');
+    const stats = updateMessageMetrics();
+    messageOutput.focus();
+    return stats;
+  };
+  const renderEmojiGrid = () => {
+    const items = filteredEmojiItems();
+    const fragment = document.createDocumentFragment();
+    items.forEach((item) => {
+      const stats = messageStats(item.value);
+      const button = document.createElement('button');
+      const glyph = document.createElement('span');
+      const count = document.createElement('small');
+      button.type = 'button';
+      button.className = 'emoji-option';
+      glyph.textContent = item.value;
+      glyph.setAttribute('aria-hidden', 'true');
+      count.textContent = `CP ${stats.codePoints}`;
+      count.setAttribute('aria-hidden', 'true');
+      button.append(glyph, count);
+      button.title = `${item.label} · 화면 ${stats.graphemes}자 · 코드 포인트 ${stats.codePoints}개 · UTF-16 ${stats.codeUnits}`;
+      button.setAttribute('aria-label', button.title);
+      button.addEventListener('click', () => {
+        const updated = insertMessageText(item.value);
+        setStatus(messageStatus, `${item.label} ${item.value}을(를) 넣었습니다. ${describeMessageStats(updated)}`);
+      });
+      fragment.append(button);
+    });
+    emojiGrid.replaceChildren(fragment);
+    emojiEmpty.hidden = items.length !== 0;
+  };
+
   const makeMessage = () => {
     const count = Number(messageCount.value);
     if (!Number.isInteger(count) || count < 1 || count > 2000) throw new Error('문자 수는 1~2,000자로 입력해 주세요.');
-    const output = Array.from(messagePrefix.value);
-    const filler = Array.from('가나다라마바사아자차카타파하 0123456789');
+    const output = messageSegments(messagePrefix.value);
+    const filler = messageSegments('가나다라마바사아자차카타파하 0123456789');
     for (let index = 0; output.length < count; index += 1) output.push(filler[index % filler.length]);
     return output.slice(0, count).join('');
   };
 
   messagePreset.addEventListener('change', () => { if (messagePreset.value !== 'custom') messageCount.value = messagePreset.value; });
+  messageCount.addEventListener('input', () => { messagePreset.value = ['499', '500', '501'].includes(messageCount.value) ? messageCount.value : 'custom'; });
+  messageOutput.addEventListener('input', () => {
+    const stats = updateMessageMetrics();
+    setStatus(messageStatus, messageOutput.value ? describeMessageStats(stats) : '입력할 내용을 기다리고 있습니다.');
+  });
   messageForm.addEventListener('submit', (event) => {
     event.preventDefault();
     try {
       const value = makeMessage();
       messageOutput.value = value;
-      setStatus(messageStatus, `${messageLength(value).toLocaleString('ko-KR')}자 · UTF-8 ${encoder.encode(value).length.toLocaleString('ko-KR')} bytes`);
+      const stats = updateMessageMetrics();
+      setStatus(messageStatus, `목표 화면 글자 수에 맞춰 만들었습니다. ${describeMessageStats(stats)}`);
     } catch (error) { setStatus(messageStatus, error instanceof Error ? error.message : '문자를 만들지 못했습니다.', true); }
   });
   messageCopy.addEventListener('click', async () => {
@@ -618,6 +747,33 @@
     try { await navigator.clipboard.writeText(messageOutput.value); setStatus(messageStatus, '클립보드에 복사했습니다.'); }
     catch (_) { messageOutput.select(); document.execCommand('copy'); setStatus(messageStatus, '클립보드에 복사했습니다.'); }
   });
+  messageClear.addEventListener('click', () => {
+    messageOutput.value = '';
+    updateMessageMetrics();
+    messageOutput.focus();
+    setStatus(messageStatus, '입력 내용을 초기화했습니다.');
+  });
+  emojiCategory.addEventListener('change', renderEmojiGrid);
+  emojiSearch.addEventListener('input', renderEmojiGrid);
+  emojiSearch.addEventListener('keydown', (event) => { if (event.key === 'Enter') event.preventDefault(); });
+  emojiRandomCount.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); emojiRandom.click(); } });
+  emojiRandom.addEventListener('click', () => {
+    const count = Number(emojiRandomCount.value);
+    const items = filteredEmojiItems();
+    if (!Number.isInteger(count) || count < 1 || count > 20) { setStatus(messageStatus, '무작위 이모지 개수는 1~20개로 입력해 주세요.', true); emojiRandomCount.focus(); return; }
+    if (items.length === 0) { setStatus(messageStatus, '현재 검색 조건에서 넣을 이모지가 없습니다.', true); emojiSearch.focus(); return; }
+    const selected = [];
+    let pool = [...items];
+    while (selected.length < count) {
+      if (pool.length === 0) pool = [...items];
+      selected.push(pool.splice(randomIndex(pool.length), 1)[0].value);
+    }
+    const stats = insertMessageText(selected.join(''));
+    setStatus(messageStatus, `기기 기본 이모지 ${count.toLocaleString('ko-KR')}개를 넣었습니다. ${describeMessageStats(stats)}`);
+  });
+  updateMessageMetrics();
+  renderEmojiGrid();
+  if (!graphemeSegmenter) setStatus(messageStatus, '이 브라우저는 화면 글자 분리를 지원하지 않아 코드 포인트 기준으로 대신 계산합니다.', true);
 
   const contactCountries = {
     KR: { label: '대한민국', callingCode: '82', defaultPrefix: '010', prefixPattern: /^010$/, prefixHint: '대한민국 휴대전화 형식: 010', nationalPattern: /^010\d{8}$/, names: ['김민준', '이서연', '박도윤', '최지우', '정하준', '강서윤'] },

@@ -17,7 +17,7 @@ $testDataJsVersion = (string) (filemtime(__DIR__ . '/../static/test-data.js') ?:
 
   <div class="test-tabs" role="tablist" aria-label="생성기 종류">
     <button class="is-active" type="button" role="tab" aria-selected="true" aria-controls="file-panel" id="file-tab" data-tab="file">용량별 파일</button>
-    <button type="button" role="tab" aria-selected="false" aria-controls="message-panel" id="message-tab" data-tab="message">문자 길이</button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="message-panel" id="message-tab" data-tab="message">문자·이모지</button>
     <button type="button" role="tab" aria-selected="false" aria-controls="contact-panel" id="contact-tab" data-tab="contact">더미 연락처</button>
   </div>
 
@@ -51,13 +51,32 @@ $testDataJsVersion = (string) (filemtime(__DIR__ . '/../static/test-data.js') ?:
 
   <section class="test-panel" id="message-panel" role="tabpanel" aria-labelledby="message-tab" data-panel="message" hidden>
     <form class="test-form" id="test-message-form">
-      <label>문자 수
+      <label>목표 화면 글자 수
         <div class="size-input"><input id="message-count" type="number" min="1" max="2000" value="500" required inputmode="numeric"><select id="message-preset"><option value="custom">직접 입력</option><option value="499">499자 이하</option><option value="500">정확히 500자</option><option value="501">501자 이상</option></select></div>
       </label>
-      <label>앞에 붙일 문구 <input id="message-prefix" maxlength="80" value="테스트 문자 "></label>
-      <label class="wide-field">생성 결과 <textarea id="message-output" rows="8" readonly></textarea></label>
-      <div class="test-actions"><button class="primary" type="submit">문자 만들기</button><button class="ghost" id="message-copy" type="button">복사</button></div>
-      <p class="test-status" id="message-status" role="status" aria-live="polite">한글·이모지를 한 글자로 계산하며 UTF-8 바이트도 함께 표시합니다.</p>
+      <label>앞에 붙일 문구 <input id="message-prefix" value="테스트 문자 "></label>
+      <label class="wide-field">직접 입력 또는 생성 결과 <textarea id="message-output" rows="8" spellcheck="false" placeholder="글자 수를 확인할 내용을 입력하거나 아래에서 이모지를 넣으세요."></textarea></label>
+      <div class="message-metrics wide-field" aria-label="입력 내용 통계">
+        <div><span>화면 글자</span><strong id="message-graphemes">0</strong></div>
+        <div><span>Unicode 코드 포인트</span><strong id="message-code-points">0</strong></div>
+        <div><span>UTF-16 문자열 길이</span><strong id="message-code-units">0</strong></div>
+        <div><span>UTF-8 바이트</span><strong id="message-bytes">0</strong></div>
+      </div>
+      <div class="test-actions wide-field"><button class="primary" type="submit">문자 만들기</button><button class="ghost" id="message-copy" type="button">복사</button><button class="ghost" id="message-clear" type="button">초기화</button></div>
+
+      <fieldset class="emoji-generator wide-field">
+        <legend>기기 기본 이모지 테스트</legend>
+        <div class="emoji-controls">
+          <label>카테고리 <select id="emoji-category"><option value="all">전체</option><option value="single">단일 코드 포인트</option><option value="sequences">복합 이모지 (2개 이상)</option><option value="smileys">표정</option><option value="people">사람</option><option value="animals">동물·자연</option><option value="food">음식</option><option value="activity">활동</option><option value="travel">여행·장소</option><option value="objects">사물</option><option value="symbols">기호</option><option value="flags">국기</option></select></label>
+          <label>검색 <input id="emoji-search" type="search" placeholder="이름 또는 키워드" autocomplete="off"></label>
+          <label>무작위 개수 <input id="emoji-random-count" type="number" min="1" max="20" value="5" inputmode="numeric"></label>
+          <button class="ghost" id="emoji-random" type="button">무작위로 넣기</button>
+        </div>
+        <p class="test-hint">이모지는 현재 기기와 브라우저의 기본 글꼴로 표시됩니다. 예: 👍🏽은 화면 1글자·코드 포인트 2개, 👨‍💻은 화면 1글자·코드 포인트 3개입니다.</p>
+        <div class="emoji-grid" id="emoji-grid" aria-label="선택 가능한 기기 기본 이모지"></div>
+        <p class="emoji-empty" id="emoji-empty" hidden>검색 조건에 맞는 이모지가 없습니다.</p>
+      </fieldset>
+      <p class="test-status" id="message-status" role="status" aria-live="polite">화면 글자, 코드 포인트, UTF-16 문자열 길이와 UTF-8 바이트를 실시간으로 계산합니다.</p>
     </form>
   </section>
 
